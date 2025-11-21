@@ -1,0 +1,794 @@
+import { useState, useEffect, useContext, createContext, useMemo, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { LogOut, User, Menu, X, Home, Users, BookOpen, Clock, BarChart4, Settings, Mail, ShieldCheck, Zap, ArrowLeft, Loader2, Save } from 'lucide-react';
+
+// --- UTILITY COMPONENTS (Inlined) ---
+// Toast Hook (Mocked)
+const useToast = () => {
+  return {
+    toast: ({ title, description, variant = 'default' }) => {
+      console.log(`TOAST (${variant.toUpperCase()}): ${title} - ${description}`);
+      // In a real app, this would show a visible toast notification.
+    }
+  };
+};
+
+// Shadcn UI Components (Simplified/Mocked using Tailwind)
+const Button = ({ children, onClick, variant = 'default', size = 'default', className = '', type = 'button', disabled = false, ...props }) => {
+    let baseStyle = "px-4 py-2 font-semibold transition duration-150 ease-in-out rounded-lg shadow-md flex items-center justify-center";
+    if (variant === 'default') baseStyle += " bg-indigo-600 text-white hover:bg-indigo-700";
+    if (variant === 'outline') baseStyle += " bg-white text-indigo-600 border border-indigo-600 hover:bg-indigo-50 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400";
+    if (variant === 'destructive') baseStyle += " bg-red-600 text-white hover:bg-red-700";
+    if (variant === 'link') baseStyle = "text-indigo-600 hover:underline shadow-none px-2";
+    if (size === 'icon') baseStyle = "p-2 rounded-full";
+    if (size === 'sm') baseStyle += " px-3 py-1 text-sm";
+
+    // Add conditional dark mode class for text when in default/destructive mode
+    const textDarkClass = (variant === 'default' || variant === 'destructive') ? 'dark:text-white' : '';
+
+    return <button className={`${baseStyle} ${className} ${textDarkClass}`} onClick={onClick} type={type} disabled={disabled} {...props}>{children}</button>;
+};
+
+const Input = ({ id, type, value, onChange, placeholder, disabled, className = '', required = false, ...props }) => {
+    const baseStyle = "flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:ring-offset-gray-900 dark:placeholder:text-gray-400 dark:focus-visible:ring-indigo-400";
+    return <input id={id} type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} className={`${baseStyle} ${className}`} required={required} {...props} />;
+};
+const Label = ({ htmlFor, children, className = '' }) => <label htmlFor={htmlFor} className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-300 ${className}`}>{children}</label>;
+
+const Card = ({ children, className = '' }) => <div className={`rounded-xl border bg-card text-card-foreground shadow-lg dark:bg-gray-800 dark:border-gray-700 ${className}`}>{children}</div>;
+const CardHeader = ({ children, className = '' }) => <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>;
+const CardTitle = ({ children, className = '' }) => <h3 className={`text-2xl font-semibold leading-none tracking-tight dark:text-white ${className}`}>{children}</h3>;
+const CardDescription = ({ children, className = '' }) => <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>{children}</p>;
+const CardContent = ({ children, className = '' }) => <div className={`p-6 pt-0 ${className}`}>{children}</div>;
+
+const Toaster = () => <div className="fixed bottom-0 right-0 p-4 z-[999]"></div>; // Mock Toaster
+
+// --- END UTILITY COMPONENTS ---
+
+// --- START: SUPABASE CONFIGURATION (INLINED) ---
+const SUPABASE_URL = "MOCK_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "MOCK_SUPABASE_ANON_KEY";
+
+let supabase = null;
+if (typeof window !== 'undefined') {
+  console.log("Supabase Client Placeholder Initialized.");
+  supabase = {
+    auth: {
+      getSession: () => ({ data: { session: null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: { user: { id: 'mock-user', email: 'test' } }, error: null }),
+      signOut: async () => ({ error: null }),
+      signUp: async () => ({ data: { user: { id: 'mock-user', email: 'test' } }, error: null }),
+    },
+    from: (table) => ({
+      select: () => ({
+        eq: (col, val) => ({
+          single: () => {
+            // Mock profile data for testing
+            if (table === 'profiles' && col === 'id') {
+               // Return mock data to prevent loading hang
+              return { data: { username: 'testuser', full_name: 'Test User', skills: ['React', 'Node'], is_admin: val.includes('admin') }, error: null, status: 200 };
+            }
+            return { data: null, error: null, status: 200 }
+          },
+        }),
+        in: () => ({ data: [], error: null }),
+        order: () => ({ data: [], error: null }),
+      }),
+      upsert: () => ({ error: null }),
+      update: () => ({ error: null }),
+      delete: () => ({ error: null }),
+    }),
+  };
+}
+// --- END: SUPABASE CONFIGURATION ---
+
+// --- START: AUTH CONTEXT (INLINED) ---
+const AuthContext = createContext(null);
+
+export const useAuth = () => useContext(AuthContext);
+
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const isAuthenticated = !!user;
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Simulate checking initial auth state
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // If user is null, authentication is not complete.
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  const signIn = useCallback(async (email, password) => {
+    // Determine role based on email for mock login
+    const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
+    const mockUser = { id: `mock-${role}-id`, email: email, user_metadata: { role: role } };
+    setUser(mockUser);
+    return { user: mockUser, error: null };
+  }, []);
+
+  const signOut = useCallback(async () => {
+    setUser(null);
+    return { error: null };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated,
+    loading,
+    signIn,
+    signOut
+  }), [user, isAuthenticated, loading, signIn, signOut]);
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+// --- END: AUTH CONTEXT ---
+
+// --- START: SHARED COMPONENTS (Inlined) ---
+
+/**
+ * ProtectedRoute Component
+ */
+const ProtectedRoute = ({ children, isAdminOnly = false }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate('/login');
+    }
+    // Check for admin role if required
+    if (!loading && isAuthenticated && isAdminOnly) {
+      const role = user?.user_metadata?.role;
+      if (role !== 'admin') {
+        navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, loading, navigate, isAdminOnly, user]);
+
+  if (loading || (!isAuthenticated && !isAdminOnly && !user)) {
+    // Show a minimal loader while authentication is being checked
+    return (
+        <div className="flex items-center justify-center p-12 min-h-[calc(100vh-128px)]">
+            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <p className="ml-3 text-lg text-gray-600 dark:text-gray-300">Loading...</p>
+        </div>
+    );
+  }
+
+  return children;
+};
+
+/**
+ * Header Component
+ */
+const Header = () => {
+  const { isAuthenticated, signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+  const isAdmin = user?.user_metadata?.role === 'admin';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+    setIsMenuOpen(false);
+  };
+
+  const navLinks = [
+    { name: 'Home', path: '/', icon: Home, show: true },
+    { name: 'Dashboard', path: '/dashboard', icon: BookOpen, show: isAuthenticated && !isAdmin },
+    { name: 'Admin', path: '/admin', icon: ShieldCheck, show: isAuthenticated && isAdmin },
+  ];
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  // Function to check if a link is active (handles /admin/subpath)
+  const isActive = (path) => {
+    // Special handling for root path
+    if (path === '/') {
+        return location.pathname === '/';
+    }
+    // Check if the current path starts with the link path (for nested routes like /admin)
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <header className="sticky top-0 z-50 bg-white shadow-md dark:bg-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link to="/" className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 flex items-center">
+            <Zap className="w-6 h-6 mr-2" />
+            SkillSwap
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex space-x-4">
+            {navLinks.filter(link => link.show).map((link) => (
+              <Link
+                key={link.name}
+                to={link.path}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200
+                  ${isActive(link.path) ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-white' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+              >
+                <link.icon className="w-4 h-4 mr-2" />
+                {link.name}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Auth & Actions */}
+          <div className="hidden md:flex items-center space-x-2">
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 hidden lg:inline">
+                  {user?.email}
+                </span>
+                <Button onClick={handleSignOut} variant="destructive" size="sm">
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="outline">Log In</Button>
+                </Link>
+                <Link to="/register">
+                  <Button>Sign Up</Button>
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <Button size="icon" variant="outline" onClick={toggleMenu} className="md:hidden">
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Dropdown */}
+      {isMenuOpen && (
+        <div className="md:hidden absolute w-full bg-white dark:bg-gray-800 shadow-xl border-t border-gray-200 dark:border-gray-700">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {navLinks.filter(link => link.show).map((link) => (
+              <Link
+                key={link.name}
+                to={link.path}
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center px-3 py-2 text-base font-medium text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <link.icon className="w-5 h-5 mr-3" />
+                {link.name}
+              </Link>
+            ))}
+            {isAuthenticated ? (
+               <Button onClick={handleSignOut} variant="destructive" className="w-full justify-start mt-2">
+                <LogOut className="w-5 h-5 mr-3" /> Sign Out
+              </Button>
+            ) : (
+              <div className="pt-2 space-y-2">
+                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">Log In</Button>
+                </Link>
+                <Link to="/register" onClick={() => setIsMenuOpen(false)}>
+                  <Button className="w-full">Sign Up</Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};
+
+const Footer = () => {
+  return (
+    <footer className="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 mt-auto">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+          &copy; {new Date().getFullYear()} SkillSwap. All rights reserved.
+        </div>
+      </div>
+    </footer>
+  );
+};
+// --- END: SHARED COMPONENTS ---
+
+// --- START: PAGE COMPONENTS (Inlined) ---
+
+const HomePage = () => {
+  return (
+    <div className="text-center p-8 bg-white dark:bg-gray-900">
+      <h1 className="text-5xl font-extrabold text-gray-900 dark:text-white mb-4">
+        Exchange Skills, Not Money.
+      </h1>
+      <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+        Find someone to teach you coding, and teach them guitar in return. Welcome to SkillSwap.
+      </p>
+      <Link to="/register">
+        <Button size="lg" className="text-lg px-8 py-3 shadow-xl">
+          Get Started Today
+        </Button>
+      </Link>
+
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <Card>
+          <CardHeader>
+            <BookOpen className="w-8 h-8 text-indigo-500 mb-2" />
+            <CardTitle>Learn Anything</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>From web development to cooking, find an expert willing to trade their knowledge.</CardDescription>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Clock className="w-8 h-8 text-indigo-500 mb-2" />
+            <CardTitle>Flexible Time</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Arrange lessons or exchange sessions at times that work for both parties.</CardDescription>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Users className="w-8 h-8 text-indigo-500 mb-2" />
+            <CardTitle>Community Driven</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Connect with passionate individuals in your local or global community.</CardDescription>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+const LoginPage = () => {
+  const { signIn, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [email, setEmail] = useState('user@test.com');
+  const [password, setPassword] = useState('password');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+        const role = email.toLowerCase().includes('admin') ? 'admin' : 'dashboard';
+        navigate(`/${role}`);
+    }
+  }, [isAuthenticated, navigate, email]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const isAdmin = email.toLowerCase().includes('admin');
+    const redirectPath = isAdmin ? '/admin' : '/dashboard';
+
+    try {
+      const { error } = await signIn(email, password);
+      if (error) throw error;
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome! Redirecting to your ${isAdmin ? 'admin' : 'user'} area.`,
+      });
+      navigate(redirectPath);
+
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials. (Mock Failure)",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isAuthenticated) return null;
+
+  return (
+    <div className="flex items-center justify-center p-4 min-h-[calc(100vh-128px)]">
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="text-center">
+          <CardTitle>Log In to SkillSwap</CardTitle>
+          <CardDescription>
+            Enter your email and password to access your dashboard.
+            <ul className="text-left text-xs mt-2 text-gray-400 dark:text-gray-500 list-disc ml-4">
+              <li>User Test: `user@test.com` / `password`</li>
+              <li>Admin Test: `admin@test.com` / `password`</li>
+            </ul>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              {loading ? 'Logging In...' : 'Log In'}
+            </Button>
+          </form>
+          <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+            Don't have an account? <Link to="/register" className="text-indigo-600 hover:underline">Sign Up</Link>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const RegisterPage = () => {
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/dashboard');
+        }
+    }, [isAuthenticated, navigate]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setLoading(true);
+        // Mock registration success
+        setTimeout(() => {
+            setLoading(false);
+            toast({
+                title: "Registration Mock Success",
+                description: "You have been 'registered'. Please proceed to log in.",
+            });
+            navigate('/login');
+        }, 1500);
+    };
+
+    return (
+        <div className="flex items-center justify-center p-4 min-h-[calc(100vh-128px)]">
+            <Card className="w-full max-w-md shadow-2xl">
+                <CardHeader className="text-center">
+                    <CardTitle>Create Account</CardTitle>
+                    <CardDescription>Join our community to start exchanging skills.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" placeholder="you@example.com" required disabled={loading} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input id="password" type="password" placeholder="********" required disabled={loading} />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            {loading ? 'Signing Up...' : 'Sign Up'}
+                        </Button>
+                    </form>
+                    <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+                        Already have an account? <Link to="/login" className="text-indigo-600 hover:underline">Log In</Link>
+                    </p>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+const NotFoundPage = () => {
+    return (
+        <div className="text-center p-12 min-h-[calc(100vh-128px)] flex flex-col justify-center items-center">
+            <h1 className="text-6xl font-extrabold text-indigo-600">404</h1>
+            <h2 className="text-3xl font-semibold text-gray-800 dark:text-gray-200 mt-4 mb-2">Page Not Found</h2>
+            <Link to="/"><Button className="mt-6">Go to Homepage</Button></Link>
+        </div>
+    );
+};
+
+// --- DASHBOARD COMPONENTS ---
+
+const ProfileEditor = ({ supabase }) => {
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState({ username: '', full_name: '', skills: [] });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function getProfile() {
+      if (!isAuthenticated || !user || !supabase) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Mock profile fetch
+        const { data, error, status } = await supabase
+          .from('profiles')
+          .select('username, full_name')
+          .eq('id', user.id)
+          .single();
+
+        if (error && status !== 406) throw error;
+
+        if (data) {
+          // Use mock data structure if actual fetch fails or is incomplete
+          setProfile(prev => ({
+              ...prev,
+              username: data.username || user.email?.split('@')[0] || 'mock-user',
+              full_name: data.full_name || 'Mock User'
+          }));
+        } else {
+             // Fallback mock data
+             setProfile(prev => ({
+                ...prev,
+                username: user.email?.split('@')[0] || 'mock-user',
+                full_name: 'Mock User',
+             }));
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+         setProfile(prev => ({
+            ...prev,
+            username: user.email?.split('@')[0] || 'mock-user',
+            full_name: 'Mock User',
+         }));
+      } finally {
+        setLoading(false);
+      }
+    }
+    getProfile();
+  }, [isAuthenticated, user, supabase]);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    // Mock save
+    setTimeout(() => {
+        setSaving(false);
+        toast({ title: "Success", description: "Profile updated (Mock - data not persisted)" });
+    }, 1500);
+  };
+
+  if (loading) return (
+    <Card className="max-w-xl mx-auto shadow-lg p-12 text-center">
+        <Loader2 className="w-6 h-6 mr-2 inline animate-spin" />
+        Loading Profile...
+    </Card>
+  );
+
+  return (
+    <Card className="max-w-xl mx-auto shadow-lg">
+      <CardHeader>
+        <CardTitle className="text-2xl flex items-center"><User className="w-5 h-5 mr-2 text-indigo-500" /> Edit Profile</CardTitle>
+        <CardDescription>Update your public username and full name.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleUpdate} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email (Immutable)</Label>
+            <Input id="email" type="text" value={user?.email || ''} disabled className="bg-gray-100 dark:bg-gray-700 dark:text-gray-300" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" type="text" required value={profile.username} onChange={(e) => setProfile({...profile, username: e.target.value})} disabled={saving} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="full_name">Full Name</Label>
+            <Input id="full_name" type="text" value={profile.full_name} onChange={(e) => setProfile({...profile, full_name: e.target.value})} disabled={saving} />
+          </div>
+          <Button type="submit" className="w-full" disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {saving ? 'Saving...' : 'Update Profile'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+const DashboardPage = ({ supabase }) => {
+  const { user } = useAuth();
+  if (!user) return <div className="p-8 text-center text-red-500">Access Denied</div>;
+
+  const userEmailName = user.email?.split('@')[0] || 'User';
+
+  return (
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white">Welcome Back, {userEmailName}!</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2"><ProfileEditor supabase={supabase} /></div>
+        <div className="lg:col-span-1">
+          <Card className="h-full border-t-4 border-indigo-500">
+            <CardHeader><CardTitle className="flex items-center text-xl"><ShieldCheck className="w-5 h-5 mr-2" /> Account Summary</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center text-sm"><Mail className="w-5 h-5 mr-3 text-indigo-500" /><p className="text-gray-700 dark:text-gray-300 break-all">{user.email}</p></div>
+              <div className="flex items-center text-sm"><User className="w-5 h-5 mr-3 text-indigo-500" /><p className="text-gray-700 dark:text-gray-300">Role: Standard User</p></div>
+
+              <div className="pt-4 space-y-2 border-t border-gray-200 dark:border-gray-700">
+                 <h4 className="font-semibold text-gray-800 dark:text-gray-200">Quick Actions</h4>
+                 <Button variant="outline" className="w-full justify-start"><BookOpen className="w-4 h-4 mr-2" /> Find a Skill Exchange</Button>
+                 <Button variant="outline" className="w-full justify-start"><Clock className="w-4 h-4 mr-2" /> View Pending Exchanges</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- ADMIN COMPONENTS ---
+
+const AdminDashboardPage = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const adminSections = [
+        { name: 'User Management', path: 'users', icon: Users, description: 'View, edit, and deactivate user accounts.' },
+        { name: 'Skill Management', path: 'skills', icon: BookOpen, description: 'Approve or edit the official skills catalog.' },
+        { name: 'Exchange Moderation', path: 'exchanges', icon: Clock, description: 'Review and resolve disputes on skill exchanges.' },
+        { name: 'Analytics', path: 'analytics', icon: BarChart4, description: 'Monitor platform growth and user activity metrics.' },
+    ];
+
+    return (
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-indigo-700 dark:text-indigo-400">Admin Control Panel</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">Welcome, {user?.email}. Select a module to manage the platform.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {adminSections.map(section => (
+                    <Card key={section.path} className="hover:shadow-2xl transition-shadow duration-300 cursor-pointer border-t-4 border-indigo-400" onClick={() => navigate(section.path)}>
+                        <CardHeader>
+                            <section.icon className="w-8 h-8 text-indigo-500 mb-2" />
+                            <CardTitle className="text-xl">{section.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent><CardDescription>{section.description}</CardDescription></CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const AdminLayout = ({ children, title }) => (
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
+        <div className="flex items-center mb-6 border-b pb-4 border-gray-200 dark:border-gray-700">
+            <Link to="/admin">
+                <Button size="icon" variant="outline" className="mr-4">
+                    <ArrowLeft className="w-5 h-5" />
+                </Button>
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{title}</h1>
+        </div>
+        <Card className="p-6">
+            <CardContent className="p-0">
+                {children}
+                <div className="mt-6 text-center">
+                    <Link to="/admin">
+                        <Button variant="outline">Back to Admin Dashboard</Button>
+                    </Link>
+                </div>
+            </CardContent>
+        </Card>
+    </div>
+);
+
+// Admin Placeholders
+const AdminUserManagement = () => (
+    <AdminLayout title="User Management">
+        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will find tools to view, search, and edit user profiles.</p>
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
+            <h3 className="font-semibold dark:text-white">Next Features:</h3>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
+                <li>Search filter for users by email or ID.</li>
+                <li>Table listing all user accounts with status and role.</li>
+                <li>Option to ban or temporarily suspend users.</li>
+            </ul>
+        </div>
+    </AdminLayout>
+);
+const AdminSkillManagement = () => (
+    <AdminLayout title="Skill Management">
+        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will define and manage the official skill taxonomy.</p>
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
+            <h3 className="font-semibold dark:text-white">Next Features:</h3>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
+                <li>Form to add new primary skill categories (e.g., Programming, Music).</li>
+                <li>Tool to manage sub-skills (e.g., React, Piano).</li>
+                <li>Approval queue for user-submitted skills.</li>
+            </ul>
+        </div>
+    </AdminLayout>
+);
+const AdminExchangeModeration = () => (
+    <AdminLayout title="Exchange Moderation">
+        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will handle disputes and resolve reported exchanges.</p>
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
+            <h3 className="font-semibold dark:text-white">Next Features:</h3>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
+                <li>Queue of ongoing or reported exchanges needing review.</li>
+                <li>Detailed view of exchange history and user communication.</li>
+                <li>Tools to grant/revoke experience points or issue warnings.</li>
+            </ul>
+        </div>
+    </AdminLayout>
+);
+const AdminAnalytics = () => (
+    <AdminLayout title="Analytics">
+        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This section will display key performance indicators and platform metrics.</p>
+        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
+            <h3 className="font-semibold dark:text-white">Next Features:</h3>
+            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
+                <li>Total Registered Users vs. Active Users charts.</li>
+                <li>Most popular skills being exchanged.</li>
+                <li>Geographical distribution of users (if applicable).</li>
+            </ul>
+        </div>
+    </AdminLayout>
+);
+
+// --- MAIN APP ---
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+
+              <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardPage supabase={supabase} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="/admin/*" element={
+                  <ProtectedRoute isAdminOnly={true}>
+                    <Routes>
+                      <Route index element={<AdminDashboardPage />} />
+                      <Route path="users" element={<AdminUserManagement />} />
+                      <Route path="skills" element={<AdminSkillManagement />} />
+                      <Route path="exchanges" element={<AdminExchangeModeration />} />
+                      <Route path="analytics" element={<AdminAnalytics />} />
+                    </Routes>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </main>
+          <Footer />
+          <Toaster />
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
