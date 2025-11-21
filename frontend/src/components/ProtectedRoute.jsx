@@ -13,10 +13,10 @@ const ProtectedRoute = ({ children, isAdminOnly = false }) => {
       navigate('/login');
       return;
     }
-    
+
     if (isAdminOnly) {
-      const userRole = user?.user_metadata?.role;
-      if (userRole !== 'admin') {
+      const isAdmin = user?.user_metadata?.is_admin;
+      if (!isAdmin) {
         navigate('/dashboard'); // Redirect non-admins away
       }
     }
@@ -25,9 +25,9 @@ const ProtectedRoute = ({ children, isAdminOnly = false }) => {
   if (loading) {
     return <div className="text-center p-8 text-lg">Loading authentication status...</div>;
   }
-  
+
   // Only render children if authenticated (and admin if required)
-  if (isAuthenticated && (!isAdminOnly || user?.user_metadata?.role === 'admin')) {
+  if (isAuthenticated && (!isAdminOnly || user?.user_metadata?.is_admin)) {
     return children;
   }
 

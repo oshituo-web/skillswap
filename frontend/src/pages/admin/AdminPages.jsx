@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { Card, CardContent } from '../../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { api } from '../../lib/api';
 
 const AdminLayout = ({ children, title }) => (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto">
@@ -16,68 +18,235 @@ const AdminLayout = ({ children, title }) => (
         <Card className="p-6">
             <CardContent className="p-0">
                 {children}
-                <div className="mt-6 text-center">
-                    <Link to="/admin">
-                        <Button variant="outline">Back to Admin Dashboard</Button>
-                    </Link>
-                </div>
             </CardContent>
         </Card>
     </div>
 );
 
-export const AdminUserManagement = () => (
-    <AdminLayout title="User Management">
-        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will find tools to view, search, and edit user profiles.</p>
-        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
-            <h3 className="font-semibold dark:text-white">Next Features:</h3>
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
-                <li>Search filter for users by email or ID.</li>
-                <li>Table listing all user accounts with status and role.</li>
-                <li>Option to ban or temporarily suspend users.</li>
-            </ul>
-        </div>
-    </AdminLayout>
-);
+export const AdminUserManagement = () => {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-export const AdminSkillManagement = () => (
-    <AdminLayout title="Skill Management">
-        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will define and manage the official skill taxonomy.</p>
-        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
-            <h3 className="font-semibold dark:text-white">Next Features:</h3>
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
-                <li>Form to add new primary skill categories (e.g., Programming, Music).</li>
-                <li>Tool to manage sub-skills (e.g., React, Piano).</li>
-                <li>Approval queue for user-submitted skills.</li>
-            </ul>
-        </div>
-    </AdminLayout>
-);
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const data = await api.get('/admin/users');
+                setUsers(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUsers();
+    }, []);
 
-export const AdminExchangeModeration = () => (
-    <AdminLayout title="Exchange Moderation">
-        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This is where you will handle disputes and resolve reported exchanges.</p>
-        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
-            <h3 className="font-semibold dark:text-white">Next Features:</h3>
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
-                <li>Queue of ongoing or reported exchanges needing review.</li>
-                <li>Detailed view of exchange history and user communication.</li>
-                <li>Tools to grant/revoke experience points or issue warnings.</li>
-            </ul>
-        </div>
-    </AdminLayout>
-);
+    if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
 
-export const AdminAnalytics = () => (
-    <AdminLayout title="Analytics">
-        <p className="text-lg text-gray-600 dark:text-gray-300">Placeholder: This section will display key performance indicators and platform metrics.</p>
-        <div className="mt-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700 space-y-2">
-            <h3 className="font-semibold dark:text-white">Next Features:</h3>
-            <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-400">
-                <li>Total Registered Users vs. Active Users charts.</li>
-                <li>Most popular skills being exchanged.</li>
-                <li>Geographical distribution of users (if applicable).</li>
-            </ul>
-        </div>
-    </AdminLayout>
-);
+    return (
+        <AdminLayout title="User Management">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b dark:border-gray-700">
+                            <th className="p-4 font-semibold">ID</th>
+                            <th className="p-4 font-semibold">Email</th>
+                            <th className="p-4 font-semibold">Created At</th>
+                            <th className="p-4 font-semibold">Last Sign In</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="p-4 font-mono text-sm text-gray-500">{user.id}</td>
+                                <td className="p-4">{user.email}</td>
+                                <td className="p-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
+                                <td className="p-4 text-sm text-gray-500">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </AdminLayout>
+    );
+};
+
+export const AdminSkillManagement = () => {
+    const [skills, setSkills] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const fetchSkills = async () => {
+        try {
+            const data = await api.get('/skills');
+            setSkills(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSkills();
+    }, []);
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this skill?')) return;
+        try {
+            await api.delete(`/admin/skills/${id}`);
+            setSkills(skills.filter(s => s.id !== id));
+        } catch (err) {
+            alert('Failed to delete skill: ' + err.message);
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+
+    return (
+        <AdminLayout title="Skill Management">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b dark:border-gray-700">
+                            <th className="p-4 font-semibold">Name</th>
+                            <th className="p-4 font-semibold">Description</th>
+                            <th className="p-4 font-semibold">User ID</th>
+                            <th className="p-4 font-semibold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {skills.map(skill => (
+                            <tr key={skill.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="p-4 font-medium">{skill.name}</td>
+                                <td className="p-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{skill.description}</td>
+                                <td className="p-4 font-mono text-xs text-gray-500">{skill.user_id}</td>
+                                <td className="p-4">
+                                    <Button variant="destructive" size="sm" onClick={() => handleDelete(skill.id)}>
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </AdminLayout>
+    );
+};
+
+export const AdminExchangeModeration = () => {
+    const [exchanges, setExchanges] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchExchanges = async () => {
+            try {
+                const data = await api.get('/admin/exchanges');
+                setExchanges(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchExchanges();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+
+    return (
+        <AdminLayout title="Exchange Moderation">
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b dark:border-gray-700">
+                            <th className="p-4 font-semibold">ID</th>
+                            <th className="p-4 font-semibold">Status</th>
+                            <th className="p-4 font-semibold">Requester</th>
+                            <th className="p-4 font-semibold">Provider</th>
+                            <th className="p-4 font-semibold">Skill</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {exchanges.map(exchange => (
+                            <tr key={exchange.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="p-4 font-mono text-sm text-gray-500">{exchange.id}</td>
+                                <td className="p-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold 
+                                        ${exchange.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                            exchange.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-gray-100 text-gray-800'}`}>
+                                        {exchange.status}
+                                    </span>
+                                </td>
+                                <td className="p-4 font-mono text-xs text-gray-500">{exchange.requester_id}</td>
+                                <td className="p-4 font-mono text-xs text-gray-500">{exchange.provider_id}</td>
+                                <td className="p-4 font-mono text-xs text-gray-500">{exchange.skill_id}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </AdminLayout>
+    );
+};
+
+export const AdminAnalytics = () => {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const data = await api.get('/admin/analytics');
+                setStats(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+
+    return (
+        <AdminLayout title="Analytics">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-500">Total Users</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold text-indigo-600">{stats.users}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-500">Total Skills</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold text-green-600">{stats.skills}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-500">Total Exchanges</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-4xl font-bold text-blue-600">{stats.exchanges}</div>
+                    </CardContent>
+                </Card>
+            </div>
+        </AdminLayout>
+    );
+};
