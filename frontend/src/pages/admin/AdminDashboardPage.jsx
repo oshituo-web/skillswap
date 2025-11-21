@@ -19,13 +19,15 @@ const AdminDashboardPage = () => {
       <p className="text-lg text-gray-600 dark:text-gray-300">Welcome, {user?.email}. Select a module to manage the platform.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {adminSections.map(section => (
-          <Card key={section.path} className="hover:shadow-2xl transition-shadow duration-300 cursor-pointer border-t-4 border-indigo-400" onClick={() => navigate(section.path)}>
-            <CardHeader>
-              <section.icon className="w-8 h-8 text-indigo-500 mb-2" />
-              <CardTitle className="text-xl">{section.name}</CardTitle>
-            </CardHeader>
-            <CardContent><CardDescription>{section.description}</CardDescription></CardContent>
-          </Card>
+          <div key={section.path} onClick={() => navigate(section.path)} style={{ cursor: 'pointer' }}>
+            <Card className="hover:shadow-2xl transition-shadow duration-300 border-t-4 border-indigo-400 h-full">
+              <CardHeader>
+                <section.icon className="w-8 h-8 text-indigo-500 mb-2" />
+                <CardTitle className="text-xl">{section.name}</CardTitle>
+              </CardHeader>
+              <CardContent><CardDescription>{section.description}</CardDescription></CardContent>
+            </Card>
+          </div>
         ))}
       </div>
     </div>

@@ -12,6 +12,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import SkillMarketplace from './pages/dashboard/SkillMarketplace';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
 import { AdminUserManagement, AdminSkillManagement, AdminExchangeModeration, AdminAnalytics } from './pages/admin/AdminPages';
 
 const NotFoundPage = () => {
@@ -50,6 +51,8 @@ function App() {
                 </ProtectedRoute>
               }
               />
+
+              <Route path="/admin/login" element={<AdminLoginPage />} />
 
               <Route path="/admin/*" element={
                 <ProtectedRoute isAdminOnly={true}>
