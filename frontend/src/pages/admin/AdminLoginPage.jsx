@@ -3,28 +3,40 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import Button from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
-import { Shield, Mail } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 
 const AdminLoginPage = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    const handleGoogleLogin = async () => {
+    const handleLogin = async (e) => {
+        e.preventDefault();
         try {
             setLoading(true);
             setError(null);
 
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/admin`,
-                },
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
             });
 
             if (error) throw error;
+
+            // Check if user is admin
+            const isAdmin = data.user?.user_metadata?.is_admin;
+            if (!isAdmin) {
+                await supabase.auth.signOut();
+                throw new Error('Access denied. Admin privileges required.');
+            }
+
+            // Redirect to admin dashboard
+            navigate('/admin');
         } catch (err) {
             setError(err.message);
+        } finally {
             setLoading(false);
         }
     };
@@ -38,34 +50,72 @@ const AdminLoginPage = () => {
                     </div>
                     <CardTitle className="text-3xl font-bold">Admin Login</CardTitle>
                     <CardDescription className="text-base">
-                        Sign in with your authorized Google account to access the admin dashboard
+                        Sign in with your admin credentials to access the dashboard
                     </CardDescription>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                    {error && (
-                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <CardContent>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        {error && (
+                            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Email Address
+                            </label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
+                                placeholder="admin@example.com"
+                            />
                         </div>
-                    )}
 
-                    <Button
-                        onClick={handleGoogleLogin}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-3 py-6 text-lg"
-                        size="lg"
-                    >
-                        <Mail className="w-5 h-5" />
-                        {loading ? 'Signing in...' : 'Sign in with Google'}
-                    </Button>
+                        <div className="space-y-2">
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Password
+                            </label>
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
+                                placeholder="••••••••"
+                            />
+                        </div>
 
-                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                            Only authorized admin accounts can access the dashboard.
-                            <br />
-                            Contact your administrator if you need access.
-                        </p>
-                    </div>
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full flex items-center justify-center gap-3 py-6 text-lg"
+                            size="lg"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Signing in...
+                                </>
+                            ) : (
+                                'Sign In'
+                            )}
+                        </Button>
+
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                                Only authorized admin accounts can access the dashboard.
+                                <br />
+                                Contact your administrator if you need access.
+                            </p>
+                        </div>
+                    </form>
                 </CardContent>
             </Card>
         </div>
