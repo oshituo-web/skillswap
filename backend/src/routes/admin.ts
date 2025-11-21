@@ -70,4 +70,27 @@ router.get('/analytics', [authMiddleware, adminMiddleware], async (req: Request,
     }
 });
 
+router.patch('/users/:id/role', [authMiddleware, adminMiddleware], async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { is_admin } = req.body;
+
+        if (typeof is_admin !== 'boolean') {
+            return res.status(400).json({ error: 'is_admin must be a boolean' });
+        }
+
+        const { data, error } = await supabase.auth.admin.updateUserById(id, {
+            user_metadata: { is_admin }
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        res.json({ success: true, user: data.user });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 export default router;

@@ -27,20 +27,37 @@ export const AdminUserManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [updatingUserId, setUpdatingUserId] = useState(null);
+
+    const fetchUsers = async () => {
+        try {
+            const data = await api.get('/admin/users');
+            setUsers(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const data = await api.get('/admin/users');
-                setUsers(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchUsers();
     }, []);
+
+    const handleToggleAdmin = async (userId, currentIsAdmin) => {
+        if (!window.confirm(`Are you sure you want to ${currentIsAdmin ? 'demote this user from' : 'promote this user to'} admin?`)) return;
+
+        setUpdatingUserId(userId);
+        try {
+            await api.patch(`/admin/users/${userId}/role`, { is_admin: !currentIsAdmin });
+            // Refresh the user list
+            await fetchUsers();
+        } catch (err) {
+            alert('Failed to update user role: ' + err.message);
+        } finally {
+            setUpdatingUserId(null);
+        }
+    };
 
     if (loading) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-600" /></div>;
     if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
@@ -51,21 +68,43 @@ export const AdminUserManagement = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b dark:border-gray-700">
-                            <th className="p-4 font-semibold">ID</th>
                             <th className="p-4 font-semibold">Email</th>
+                            <th className="p-4 font-semibold">Role</th>
                             <th className="p-4 font-semibold">Created At</th>
                             <th className="p-4 font-semibold">Last Sign In</th>
+                            <th className="p-4 font-semibold">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(user => (
-                            <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                <td className="p-4 font-mono text-sm text-gray-500">{user.id}</td>
-                                <td className="p-4">{user.email}</td>
-                                <td className="p-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
-                                <td className="p-4 text-sm text-gray-500">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</td>
-                            </tr>
-                        ))}
+                        {users.map(user => {
+                            const isAdmin = user.user_metadata?.is_admin || false;
+                            const isUpdating = updatingUserId === user.id;
+
+                            return (
+                                <tr key={user.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                    <td className="p-4">{user.email}</td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${isAdmin ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                            }`}>
+                                            {isAdmin ? 'Admin' : 'User'}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
+                                    <td className="p-4 text-sm text-gray-500">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}</td>
+                                    <td className="p-4">
+                                        <Button
+                                            variant={isAdmin ? "destructive" : "default"}
+                                            size="sm"
+                                            onClick={() => handleToggleAdmin(user.id, isAdmin)}
+                                            disabled={isUpdating}
+                                        >
+                                            {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : (isAdmin ? 'Demote' : 'Promote')}
+                                        </Button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
