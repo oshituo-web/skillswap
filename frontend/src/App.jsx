@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -24,8 +25,6 @@ const NotFoundPage = () => {
     </div>
   );
 };
-
-const Toaster = () => <div className="fixed bottom-0 right-0 p-4 z-[999]"></div>; // Mock Toaster or import real one
 
 function App() {
   return (

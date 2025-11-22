@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import userRouter from './routes/user'; // User Dashboard Routes
 import adminRouter from './routes/admin'; // Admin Dashboard Routes
+import auditRouter from './routes/audit'; // Audit Log Routes
 import webhookRouter from './routes/webhook'; // Webhook Routes (for Resend/Supabase)
 import skillsRouter from './routes/skills';
 import exchangesRouter from './routes/exchanges';
@@ -24,8 +25,9 @@ app.use(cors(corsOptions)); // Apply CORS middleware
 const port = process.env.PORT || 3000;
 
 // === ROUTER INTEGRATION ===
-app.use('/api/user', userRouter); 
-app.use('/api/admin', adminRouter); 
+app.use('/api/user', userRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/admin', auditRouter); // Audit logs under /api/admin/audit-logs
 app.use('/api/webhooks', webhookRouter); // <-- NEW WEBHOOK ROUTER
 app.use('/api/skills', skillsRouter);
 app.use('/api/exchanges', exchangesRouter);

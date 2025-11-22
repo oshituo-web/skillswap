@@ -3,13 +3,14 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap } from 'lucide-react';
 import Button from '../ui/Button';
+import DarkModeToggle from '../ui/DarkModeToggle';
 
 const Header = () => {
     const { isAuthenticated, signOut, user } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const location = useLocation();
-    const isAdmin = user?.user_metadata?.role === 'admin';
+    const isAdmin = user?.user_metadata?.is_admin;
 
     const handleSignOut = async () => {
         await signOut();
@@ -20,7 +21,8 @@ const Header = () => {
     const navLinks = [
         { name: 'Home', path: '/', icon: Home, show: true },
         { name: 'Dashboard', path: '/dashboard', icon: BookOpen, show: isAuthenticated && !isAdmin },
-        { name: 'Admin', path: '/admin', icon: ShieldCheck, show: isAuthenticated && isAdmin },
+        { name: 'Marketplace', path: '/marketplace', icon: Zap, show: isAuthenticated },
+        { name: 'Admin Panel', path: '/admin', icon: ShieldCheck, show: isAuthenticated && isAdmin },
     ];
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -56,6 +58,7 @@ const Header = () => {
 
                     {/* Auth & Actions */}
                     <div className="hidden md:flex items-center space-x-2">
+                        <DarkModeToggle />
                         {isAuthenticated ? (
                             <>
                                 <span className="text-sm text-gray-600 dark:text-gray-400 mr-2 hidden lg:inline">
