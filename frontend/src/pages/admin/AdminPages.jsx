@@ -283,7 +283,8 @@ export const AdminSkillManagement = () => {
     useEffect(() => {
         const fetchSkills = async () => {
             try {
-                const data = await api.get('/skills');
+                // Use the new endpoint that includes user emails
+                const data = await api.get('/admin/skills-with-users');
                 setSkills(data);
             } catch (err) {
                 setError(err.message);
@@ -323,16 +324,21 @@ export const AdminSkillManagement = () => {
                         </CardHeader>
                         <CardContent>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{skill.description}</p>
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col gap-2">
                                 <span className="text-xs text-gray-500">Category: {skill.category}</span>
-                                <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDelete(skill.id)}
-                                    disabled={deletingId === skill.id}
-                                >
-                                    {deletingId === skill.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                                </Button>
+                                <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                                    User: {skill.user_email}
+                                </span>
+                                <div className="flex justify-end mt-2">
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleDelete(skill.id)}
+                                        disabled={deletingId === skill.id}
+                                    >
+                                        {deletingId === skill.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -384,22 +390,36 @@ export const AdminExchangeModeration = () => {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b dark:border-gray-700">
-                            <th className="p-4 font-semibold">ID</th>
+                            <th className="p-4 font-semibold">Requester</th>
+                            <th className="p-4 font-semibold">Provider</th>
                             <th className="p-4 font-semibold">Status</th>
-                            <th className="p-4 font-semibold">Created At</th>
+                            <th className="p-4 font-semibold">Request Date</th>
+                            <th className="p-4 font-semibold">Last Updated</th>
                         </tr>
                     </thead>
                     <tbody>
                         {exchanges.map(exchange => (
                             <tr key={exchange.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                <td className="p-4 font-mono text-sm">{exchange.id}</td>
+                                <td className="p-4 text-sm">
+                                    <div className="font-medium text-gray-900 dark:text-white">{exchange.requester_email}</div>
+                                </td>
+                                <td className="p-4 text-sm">
+                                    <div className="font-medium text-gray-900 dark:text-white">{exchange.provider_email}</div>
+                                </td>
                                 <td className="p-4">
                                     <div className="flex items-center gap-2">
                                         {getStatusIcon(exchange.status)}
-                                        <span className="capitalize">{exchange.status}</span>
+                                        <span className="capitalize text-sm">{exchange.status}</span>
                                     </div>
                                 </td>
-                                <td className="p-4 text-sm text-gray-500">{new Date(exchange.created_at).toLocaleString()}</td>
+                                <td className="p-4 text-sm text-gray-500">
+                                    {new Date(exchange.created_at).toLocaleDateString()}
+                                    <div className="text-xs text-gray-400">{new Date(exchange.created_at).toLocaleTimeString()}</div>
+                                </td>
+                                <td className="p-4 text-sm text-gray-500">
+                                    {new Date(exchange.updated_at || exchange.created_at).toLocaleDateString()}
+                                    <div className="text-xs text-gray-400">{new Date(exchange.updated_at || exchange.created_at).toLocaleTimeString()}</div>
+                                </td>
                             </tr>
                         ))}
                     </tbody>

@@ -39,16 +39,68 @@ router.delete('/skills/:id', [authMiddleware, adminMiddleware], async (req: Requ
     }
 });
 
+// Get all skills with user emails (admin only)
+router.get('/skills-with-users', [authMiddleware, adminMiddleware], async (req: Request, res: Response) => {
+    try {
+        // Fetch all skills
+        const { data: skills, error: skillsError } = await adminSupabase
+            .from('skills')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (skillsError) throw skillsError;
+
+        // Get all users to map IDs to emails
+        const { data: { users }, error: usersError } = await adminSupabase.auth.admin.listUsers();
+        if (usersError) throw usersError;
+
+        const userMap = new Map(users.map(u => [u.id, u.email]));
+
+        // Enrich skills with user emails
+        const enrichedSkills = skills.map(skill => ({
+            ...skill,
+            user_email: userMap.get(skill.user_id) || 'Unknown User',
+        }));
+
+        res.json(enrichedSkills);
+    } catch (error) {
+        console.error('Error fetching skills with users:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request, res: Response) => {
     try {
-        const { data, error } = await adminSupabase.from('exchanges').select('*');
+        // Fetch exchanges with related user data
+        const { data: exchanges, error } = await adminSupabase
+            .from('exchanges')
+            .select(`
+                *,
+                requester:requester_id(email),
+                provider:provider_id(email)
+            `)
+            .order('created_at', { ascending: false });
 
         if (error) {
             throw error;
         }
 
-        res.json(data);
+        // Get all users to map IDs to emails (fallback if joins don't work)
+        const { data: { users }, error: usersError } = await adminSupabase.auth.admin.listUsers();
+        if (usersError) throw usersError;
+
+        const userMap = new Map(users.map(u => [u.id, u.email]));
+
+        // Enrich exchanges with user emails
+        const enrichedExchanges = exchanges.map(exchange => ({
+            ...exchange,
+            requester_email: exchange.requester?.email || userMap.get(exchange.requester_id) || 'Unknown',
+            provider_email: exchange.provider?.email || userMap.get(exchange.provider_id) || 'Unknown',
+        }));
+
+        res.json(enrichedExchanges);
     } catch (error) {
+        console.error('Error fetching exchanges:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
