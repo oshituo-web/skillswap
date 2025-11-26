@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap } from 'lucide-react';
 import Button from '../ui/Button';
 import DarkModeToggle from '../ui/DarkModeToggle';
-import NotificationBell from './NotificationBell';
+import NotificationBell from '../notifications/NotificationBell';
 
 const Header = () => {
     const { isAuthenticated, signOut, user } = useAuth();
