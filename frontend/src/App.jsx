@@ -10,11 +10,25 @@ import Button from './components/ui/Button';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import UpdatePasswordPage from './pages/auth/UpdatePasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import SkillMarketplace from './pages/dashboard/SkillMarketplace';
+import ProfilePage from './pages/ProfilePage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
-import { AdminUserManagement, AdminSkillManagement, AdminExchangeModeration, AdminAnalytics } from './pages/admin/AdminPages';
+import AdminUserManagement from './pages/admin/AdminUserManagement';
+import AdminSkillManagement from './pages/admin/AdminSkillManagement';
+import AdminExchangeModeration from './pages/admin/AdminExchangeModeration';
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+
+// Static Pages
+import HowItWorksPage from './pages/static/HowItWorksPage';
+import PricingPage from './pages/static/PricingPage';
+import HelpPage from './pages/static/HelpPage';
+import TermsPage from './pages/static/TermsPage';
+import PrivacyPage from './pages/static/PrivacyPage';
+import ContactPage from './pages/static/ContactPage';
 
 const NotFoundPage = () => {
   return (
@@ -37,6 +51,8 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/update-password" element={<UpdatePasswordPage />} />
 
               <Route path="/dashboard" element={
                 <ProtectedRoute>
@@ -50,6 +66,12 @@ function App() {
                 </ProtectedRoute>
               }
               />
+              <Route path="/profile/:userId" element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+              />
 
               <Route path="/admin/login" element={<AdminLoginPage />} />
 
@@ -60,11 +82,20 @@ function App() {
                     <Route path="users" element={<AdminUserManagement />} />
                     <Route path="skills" element={<AdminSkillManagement />} />
                     <Route path="exchanges" element={<AdminExchangeModeration />} />
-                    <Route path="analytics" element={<AdminAnalytics />} />
+                    <Route path="analytics" element={<AdminAnalyticsPage />} />
                   </Routes>
                 </ProtectedRoute>
               }
               />
+
+              {/* Static Footer Pages */}
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>

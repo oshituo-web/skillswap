@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Label from '../components/ui/Label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
-import supabase from '../lib/supabaseClient';
-import { useToast } from '../hooks/use-toast';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Label from '@/components/ui/Label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import supabase from '@/lib/supabaseClient';
+import { useToast } from '@/hooks/use-toast';
 
 const NewSkillPage = () => {
     const [name, setName] = useState('');

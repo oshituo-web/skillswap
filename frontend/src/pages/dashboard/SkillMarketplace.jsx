@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
-import { useAuth } from '../../context/AuthContext';
-import Button from '../../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../../components/ui/Card';
-import { Loader2, ArrowRightLeft } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/context/AuthContext';
+import Button from '@/components/ui/Button';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
+import { Loader2, ArrowRightLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import UserReviews from '@/components/reviews/UserReviews';
 
 const SkillMarketplace = () => {
     const { user } = useAuth();
@@ -16,7 +17,9 @@ const SkillMarketplace = () => {
     const [offeredSkillId, setOfferedSkillId] = useState(''); // My skill to offer
     const [proposing, setProposing] = useState(false);
     const [proposalMessage, setProposalMessage] = useState('');
-    const [debugInfo, setDebugInfo] = useState(null);
+
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         if (user) {
@@ -27,42 +30,15 @@ const SkillMarketplace = () => {
 
     const fetchMarketplaceSkills = async () => {
         try {
-            console.log('Fetching marketplace skills for user:', user.id);
-
-            // First, try to fetch ALL skills to debug
-            const { data: allSkills, error: allError } = await supabase
-                .from('skills')
-                .select('*');
-
-            console.log('All skills in database:', allSkills);
-            console.log('All skills error:', allError);
-
-            // Now fetch skills with profile join
+            // Fetch skills with profile join
             const { data, error } = await supabase
                 .from('skills')
-                .select('*, profiles(username, full_name)')
+                .select('*, profiles(id, username, full_name)')
                 .neq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            console.log('Marketplace query result:', data);
-            console.log('Marketplace query error:', error);
-
-            if (error) {
-                console.error('Error details:', error);
-                setDebugInfo({
-                    error: error.message,
-                    allSkillsCount: allSkills?.length || 0,
-                    currentUserId: user.id
-                });
-                throw error;
-            }
-
+            if (error) throw error;
             setSkills(data || []);
-            setDebugInfo({
-                totalSkills: allSkills?.length || 0,
-                marketplaceSkills: data?.length || 0,
-                currentUserId: user.id
-            });
         } catch (err) {
             console.error('Error fetching marketplace:', err);
         } finally {
@@ -79,7 +55,6 @@ const SkillMarketplace = () => {
 
             if (error) throw error;
             setMySkills(data || []);
-            console.log('My skills:', data);
         } catch (err) {
             console.error('Error fetching my skills:', err);
         }
@@ -116,102 +91,145 @@ const SkillMarketplace = () => {
         }
     };
 
-    return (
-        <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Skill Marketplace</h1>
-                <Button variant="outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-            </div>
+    // Filter skills based on search term
+    const filteredSkills = skills.filter(skill =>
+        skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        skill.profiles?.username?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-            {/* Debug Info */}
-            {debugInfo && (
-                <Card className="bg-yellow-50 border-yellow-200">
+    return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
+            <div className="max-w-6xl mx-auto space-y-8">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Skill Marketplace</h1>
+                        <p className="text-gray-500 dark:text-gray-400 mt-1">Discover skills offered by the community</p>
+                    </div>
+                    <Button variant="outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
+                </div>
+
+                {/* Search Bar */}
+                <Card className="border-none shadow-sm bg-white dark:bg-gray-800">
                     <CardContent className="p-4">
-                        <p className="text-sm font-mono">
-                            <strong>Debug Info:</strong><br />
-                            Total skills in DB: {debugInfo.totalSkills}<br />
-                            Skills in marketplace: {debugInfo.marketplaceSkills}<br />
-                            Your user ID: {debugInfo.currentUserId}<br />
-                            {debugInfo.error && <span className="text-red-600">Error: {debugInfo.error}</span>}
-                        </p>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search for skills, descriptions, or users..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-white transition-all"
+                            />
+                        </div>
                     </CardContent>
                 </Card>
-            )}
 
-            {loading ? (
-                <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
-            ) : skills.length === 0 ? (
-                <Card className="p-8 text-center">
-                    <p className="text-gray-500 mb-4">No skills available from other users yet.</p>
-                    <p className="text-sm text-gray-400">
-                        Make sure you've added skills from a different account, and check the browser console (F12) for debug information.
-                    </p>
-                </Card>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {skills.map((skill) => (
-                        <Card key={skill.id} className="hover:shadow-lg transition-shadow">
-                            <CardHeader>
-                                <CardTitle>{skill.name}</CardTitle>
-                                <CardDescription>
-                                    Offered by: <span className="font-medium text-indigo-600">{skill.profiles?.full_name || skill.profiles?.username || 'Unknown User'}</span>
+                {loading ? (
+                    <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
+                ) : filteredSkills.length === 0 ? (
+                    <Card className="p-12 text-center border-dashed border-2 border-gray-200 dark:border-gray-700 bg-transparent">
+                        <div className="flex justify-center mb-4">
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-full">
+                                <Search className="w-8 h-8 text-indigo-500" />
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No skills found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                            {searchTerm ? `No results matching "${searchTerm}". Try a different keyword.` : "There are no skills listed in the marketplace yet. Be the first to add one!"}
+                        </p>
+                        {!searchTerm && (
+                            <Button className="mt-6" onClick={() => navigate('/dashboard')}>
+                                Add Your Skill
+                            </Button>
+                        )}
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredSkills.map((skill) => (
+                            <Card key={skill.id} className="group hover:shadow-xl transition-all duration-300 border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+                                <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                                <CardHeader className="pb-3">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-xl text-indigo-700 dark:text-indigo-400">{skill.name}</CardTitle>
+                                    </div>
+                                    <CardDescription className="flex items-center mt-1 justify-between">
+                                        <div className="flex items-center">
+                                            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300 mr-2">
+                                                {(skill.profiles?.full_name || skill.profiles?.username || 'U').charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">{skill.profiles?.full_name || skill.profiles?.username || 'Unknown User'}</span>
+                                        </div>
+                                        {skill.profiles?.id && <UserReviews userId={skill.profiles.id} compact={true} />}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-grow flex flex-col justify-between pt-0">
+                                    <p className="text-gray-600 dark:text-gray-400 mb-6 line-clamp-3 text-sm leading-relaxed">
+                                        {skill.description || 'No description provided.'}
+                                    </p>
+                                    <Button className="w-full bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-900 dark:hover:bg-gray-700 transition-colors" onClick={() => setSelectedSkill(skill)}>
+                                        <ArrowRightLeft className="w-4 h-4 mr-2" /> Request Exchange
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+
+                {/* Proposal Modal */}
+                {selectedSkill && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                        <Card className="w-full max-w-md shadow-2xl border-none">
+                            <CardHeader className="bg-indigo-600 text-white rounded-t-lg">
+                                <CardTitle>Propose Exchange</CardTitle>
+                                <CardDescription className="text-indigo-100">
+                                    Requesting <strong>{selectedSkill.name}</strong> from {selectedSkill.profiles?.full_name || 'User'}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4 min-h-[3rem]">{skill.description || 'No description provided.'}</p>
-                                <Button className="w-full" onClick={() => setSelectedSkill(skill)}>
-                                    <ArrowRightLeft className="w-4 h-4 mr-2" /> Request Exchange
-                                </Button>
+                            <CardContent className="space-y-6 p-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Offer one of your skills:</label>
+                                    {mySkills.length > 0 ? (
+                                        <select
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 transition-shadow"
+                                            value={offeredSkillId}
+                                            onChange={(e) => setOfferedSkillId(e.target.value)}
+                                        >
+                                            <option value="">Select a skill to offer...</option>
+                                            {mySkills.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
+                                            You need to add skills to your profile first!
+                                        </div>
+                                    )}
+                                </div>
+
+                                {proposalMessage && (
+                                    <div className={`p-3 rounded-lg text-sm ${proposalMessage.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                        {proposalMessage}
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end space-x-3 pt-2">
+                                    <Button variant="ghost" onClick={() => setSelectedSkill(null)}>Cancel</Button>
+                                    <Button
+                                        onClick={handleRequestExchange}
+                                        disabled={!offeredSkillId || proposing}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    >
+                                        {proposing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                        {proposing ? 'Sending...' : 'Send Proposal'}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
-                    ))}
-                </div>
-            )}
-
-            {/* Proposal Modal (Simple overlay for now) */}
-            {selectedSkill && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <Card className="w-full max-w-md">
-                        <CardHeader>
-                            <CardTitle>Propose Exchange</CardTitle>
-                            <CardDescription>
-                                You are requesting <strong>{selectedSkill.name}</strong> from {selectedSkill.profiles?.full_name || 'User'}.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Offer one of your skills:</label>
-                                {mySkills.length > 0 ? (
-                                    <select
-                                        className="w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-700"
-                                        value={offeredSkillId}
-                                        onChange={(e) => setOfferedSkillId(e.target.value)}
-                                    >
-                                        <option value="">Select a skill...</option>
-                                        {mySkills.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <p className="text-red-500 text-sm">You need to add skills to your profile first!</p>
-                                )}
-                            </div>
-
-                            {proposalMessage && <p className={`text-sm ${proposalMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>{proposalMessage}</p>}
-
-                            <div className="flex justify-end space-x-2 pt-4">
-                                <Button variant="ghost" onClick={() => setSelectedSkill(null)}>Cancel</Button>
-                                <Button
-                                    onClick={handleRequestExchange}
-                                    disabled={!offeredSkillId || proposing}
-                                >
-                                    {proposing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Proposal'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

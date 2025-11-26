@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, Eye, EyeOff, ArrowLeft, Mail, Lock, User } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { Loader2, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
-const RegisterPage = () => {
-    const { signUp, isAuthenticated } = useAuth();
+const UpdatePasswordPage = () => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -16,10 +15,14 @@ const RegisterPage = () => {
     const [success, setSuccess] = useState(false);
 
     useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/dashboard');
-        }
-    }, [isAuthenticated, navigate]);
+        // Check if we have a session (user clicked the email link)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) {
+                // If no session, they might have lost the link or it expired
+                setError("Invalid or expired password reset link.");
+            }
+        });
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,9 +36,12 @@ const RegisterPage = () => {
         }
 
         try {
-            const { error } = await signUp(email, password);
+            const { error } = await supabase.auth.updateUser({ password: password });
             if (error) throw error;
             setSuccess(true);
+            setTimeout(() => {
+                navigate('/login');
+            }, 3000);
         } catch (error) {
             setError(error.message);
         } finally {
@@ -47,21 +53,16 @@ const RegisterPage = () => {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-xl shadow-2xl text-center">
+                    <div className="flex justify-center">
+                        <CheckCircle className="h-16 w-16 text-green-500" />
+                    </div>
                     <div>
-                        <h2 className="mt-6 text-3xl font-extrabold text-green-600">
-                            Registration Successful!
+                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
+                            Password Updated!
                         </h2>
                         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            Please check your email to confirm your account before logging in.
+                            Your password has been changed successfully. Redirecting to login...
                         </p>
-                    </div>
-                    <div className="mt-6">
-                        <Link
-                            to="/login"
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all"
-                        >
-                            Go to Login
-                        </Link>
                     </div>
                 </div>
             </div>
@@ -74,45 +75,18 @@ const RegisterPage = () => {
             <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:px-20 xl:px-24 w-full lg:w-1/2 bg-white dark:bg-gray-900 z-10">
                 <div className="mx-auto w-full max-w-sm lg:w-96">
                     <div className="mb-8">
-                        <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors mb-6">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Home
-                        </Link>
                         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-                            Create your account
+                            Set New Password
                         </h2>
                         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            Join the community and start exchanging skills today.
+                            Please enter your new password below.
                         </p>
                     </div>
 
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Email address
-                            </label>
-                            <div className="mt-1 relative rounded-md shadow-sm">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Mail className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-colors"
-                                    placeholder="you@example.com"
-                                    disabled={loading}
-                                />
-                            </div>
-                        </div>
-
-                        <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Password
+                                New Password
                             </label>
                             <div className="mt-1 relative rounded-md shadow-sm">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -142,7 +116,7 @@ const RegisterPage = () => {
 
                         <div>
                             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Confirm Password
+                                Confirm New Password
                             </label>
                             <div className="mt-1 relative rounded-md shadow-sm">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -186,57 +160,30 @@ const RegisterPage = () => {
                                 disabled={loading}
                                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account'}
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Update Password'}
                             </button>
                         </div>
                     </form>
-
-                    <div className="mt-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300 dark:border-gray-700" />
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white dark:bg-gray-900 text-gray-500">
-                                    Already have an account?
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 text-center">
-                            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                                Sign in instead
-                            </Link>
-                        </div>
-                    </div>
                 </div>
             </div>
 
             {/* Right Side - Image/Gradient */}
-            <div className="hidden lg:block relative w-0 flex-1 bg-purple-900">
-                <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-purple-600 to-indigo-700 opacity-90" />
+            <div className="hidden lg:block relative w-0 flex-1 bg-indigo-900">
+                <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-green-600 to-teal-800 opacity-90" />
                 <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-12 z-10">
                     <div className="max-w-md text-center">
-                        <h2 className="text-4xl font-bold mb-6">Share Your Passion</h2>
-                        <p className="text-lg text-purple-100 leading-relaxed">
-                            "I love that I can teach cooking and learn photography in return. It's the best way to connect with people."
+                        <h2 className="text-4xl font-bold mb-6">Welcome Back</h2>
+                        <p className="text-lg text-indigo-100 leading-relaxed">
+                            "Your security is important to us. Set a strong password to keep your account safe."
                         </p>
-                        <div className="mt-8 flex items-center justify-center space-x-4">
-                            <div className="flex -space-x-2">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-purple-600 bg-gray-300" />
-                                ))}
-                            </div>
-                            <span className="text-sm font-medium text-purple-200">Trusted by thousands</span>
-                        </div>
                     </div>
                 </div>
                 {/* Decorative circles */}
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-purple-500 opacity-20 blur-3xl" />
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-indigo-500 opacity-20 blur-3xl" />
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-green-500 opacity-20 blur-3xl" />
+                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-teal-500 opacity-20 blur-3xl" />
             </div>
         </div>
     );
 };
 
-export default RegisterPage;
+export default UpdatePasswordPage;

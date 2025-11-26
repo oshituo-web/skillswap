@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import Button from '../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import { useAuth } from '../context/AuthContext';
-import supabase from '../lib/supabaseClient';
-import { useToast } from '../hooks/use-toast';
+import Button from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { useAuth } from '@/context/AuthContext';
+import supabase from '@/lib/supabaseClient';
+import { useToast } from '@/hooks/use-toast';
 
 const SkillDetailPage = () => {
     const { id } = useParams();
@@ -53,7 +53,7 @@ const SkillDetailPage = () => {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to delete skill');
             }
-            
+
             toast({
                 title: "Success!",
                 description: "The skill has been deleted.",

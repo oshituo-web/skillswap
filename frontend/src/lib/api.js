@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 const getHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();

@@ -14,6 +14,11 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.user_metadata?.banned) {
+          await supabase.auth.signOut();
+          setUser(null);
+          return;
+        }
         setUser(session?.user ?? null);
       } catch (error) {
         console.error('Error checking auth session:', error);
@@ -24,8 +29,13 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user?.user_metadata?.banned) {
+        await supabase.auth.signOut();
+        setUser(null);
+      } else {
+        setUser(session?.user ?? null);
+      }
       setLoading(false);
     });
 
@@ -53,14 +63,22 @@ export const AuthProvider = ({ children }) => {
     return { error };
   }, []);
 
+  const resetPassword = useCallback(async (email) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    return { data, error };
+  }, []);
+
   const contextValue = useMemo(() => ({
     user,
     isAuthenticated,
     loading,
     signIn,
     signUp,
-    signOut
-  }), [user, isAuthenticated, loading, signIn, signUp, signOut]);
+    signOut,
+    resetPassword
+  }), [user, isAuthenticated, loading, signIn, signUp, signOut, resetPassword]);
 
   return (
     <AuthContext.Provider value={contextValue}>
