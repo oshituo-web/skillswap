@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { Loader2, MapPin, Calendar, Mail, ArrowLeft } from 'lucide-react';
+import { Loader2, MapPin, Calendar, Mail, ArrowLeft, MessageSquare } from 'lucide-react';
 import UserReviews from '@/components/reviews/UserReviews';
 
 const ProfilePage = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const [profile, setProfile] = useState(null);
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [messageLoading, setMessageLoading] = useState(false);
 
     useEffect(() => {
         if (userId) {
@@ -48,6 +52,23 @@ const ProfilePage = () => {
         }
     };
 
+    const handleMessage = async () => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
+        try {
+            setMessageLoading(true);
+            const conversation = await api.post('/chat/conversations', { participantId: userId });
+            navigate('/chat', { state: { conversationId: conversation.id } });
+        } catch (error) {
+            console.error('Failed to start conversation', error);
+        } finally {
+            setMessageLoading(false);
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
     }
@@ -60,6 +81,8 @@ const ProfilePage = () => {
             </div>
         );
     }
+
+    const isOwnProfile = currentUser?.id === userId;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -78,6 +101,13 @@ const ProfilePage = () => {
                                     {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
                                 </div>
                             </div>
+
+                            {!isOwnProfile && (
+                                <Button onClick={handleMessage} disabled={messageLoading}>
+                                    {messageLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <MessageSquare className="w-4 h-4 mr-2" />}
+                                    Message
+                                </Button>
+                            )}
                         </div>
 
                         <div>
@@ -89,11 +119,6 @@ const ProfilePage = () => {
                                     <Calendar className="w-4 h-4 mr-1.5 text-gray-400" />
                                     Joined {new Date(profile.created_at).toLocaleDateString()}
                                 </div>
-                                {/* Placeholder for location if added later */}
-                                {/* <div className="flex items-center">
-                                    <MapPin className="w-4 h-4 mr-1.5 text-gray-400" />
-                                    New York, USA
-                                </div> */}
                             </div>
                         </div>
                     </div>
@@ -114,18 +139,6 @@ const ProfilePage = () => {
 
                     {/* Right Column: Skills & Bio */}
                     <div className="md:col-span-2 space-y-8">
-                        {/* Bio Section (if we had a bio field, for now just placeholder or omit) */}
-                        {/* <Card>
-                            <CardHeader>
-                                <CardTitle>About</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                    {profile.bio || "This user hasn't written a bio yet."}
-                                </p>
-                            </CardContent>
-                        </Card> */}
-
                         <Card>
                             <CardHeader>
                                 <CardTitle>Skills Offered</CardTitle>
