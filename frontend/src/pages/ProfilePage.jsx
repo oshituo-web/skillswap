@@ -29,7 +29,7 @@ const ProfilePage = () => {
             // Fetch profile
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
-                .select('*')
+                .select('*, bio, location, avatar_url')
                 .eq('id', userId)
                 .single();
 
@@ -96,10 +96,14 @@ const ProfilePage = () => {
                     <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
                     <div className="px-8 pb-8">
                         <div className="relative flex justify-between items-end -mt-12 mb-6">
-                            <div className="w-24 h-24 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-xl">
-                                <div className="w-full h-full rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                                    {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
-                                </div>
+                            <div className="w-24 h-24 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-xl overflow-hidden">
+                                {profile.avatar_url ? (
+                                    <img src={profile.avatar_url} alt={profile.full_name || profile.username} className="w-full h-full object-cover rounded-xl" />
+                                ) : (
+                                    <div className="w-full h-full rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                                        {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                             </div>
 
                             {!isOwnProfile && (
@@ -119,6 +123,12 @@ const ProfilePage = () => {
                                     <Calendar className="w-4 h-4 mr-1.5 text-gray-400" />
                                     Joined {new Date(profile.created_at).toLocaleDateString()}
                                 </div>
+                                {profile.location && (
+                                    <div className="flex items-center">
+                                        <MapPin className="w-4 h-4 mr-1.5 text-gray-400" />
+                                        {profile.location}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -139,6 +149,18 @@ const ProfilePage = () => {
 
                     {/* Right Column: Skills & Bio */}
                     <div className="md:col-span-2 space-y-8">
+                        {profile.bio && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>About</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                        {profile.bio}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
                         <Card>
                             <CardHeader>
                                 <CardTitle>Skills Offered</CardTitle>
