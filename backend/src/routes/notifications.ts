@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 
 const router = express.Router();
 
-// Get all notifications for the authenticated user
+// Get all notifications for current user
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
@@ -16,11 +16,14 @@ router.get('/', authMiddleware, async (req, res) => {
             .from('notifications')
             .select('*')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(50);
 
         if (error) throw error;
         res.json(data);
+
     } catch (error) {
+        console.error('Error fetching notifications:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -36,14 +39,17 @@ router.patch('/:id/read', authMiddleware, async (req, res) => {
 
         const { data, error } = await supabase
             .from('notifications')
-            .update({ is_read: true })
+            .update({ read: true })
             .eq('id', id)
             .eq('user_id', user.id) // Ensure user owns the notification
-            .select();
+            .select()
+            .single();
 
         if (error) throw error;
         res.json(data);
+
     } catch (error) {
+        console.error('Error updating notification:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -58,13 +64,46 @@ router.patch('/read-all', authMiddleware, async (req, res) => {
 
         const { data, error } = await supabase
             .from('notifications')
-            .update({ is_read: true })
+            .update({ read: true })
             .eq('user_id', user.id)
+            .eq('read', false)
             .select();
 
         if (error) throw error;
         res.json(data);
+
     } catch (error) {
+        console.error('Error marking all read:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// Send a notification (Internal/Admin use)
+router.post('/', authMiddleware, async (req, res) => {
+    try {
+        const { user_id, type, title, message, link, metadata } = req.body;
+
+        // In a real app, you might want to restrict this to admins or system events
+
+        const { data, error } = await supabase
+            .from('notifications')
+            .insert([{
+                user_id,
+                type,
+                title,
+                message,
+                link,
+                metadata,
+                read: false
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+
+    } catch (error) {
+        console.error('Error sending notification:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -13,6 +14,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import UpdatePasswordPage from './pages/auth/UpdatePasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import ChatPage from './pages/dashboard/ChatPage';
 import SkillMarketplace from './pages/dashboard/SkillMarketplace';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -43,66 +45,72 @@ const NotFoundPage = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/update-password" element={<UpdatePasswordPage />} />
+      <NotificationProvider>
+        <Router>
+          <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+            <Header />
+            <main className="flex-grow">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/update-password" element={<UpdatePasswordPage />} />
 
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-              />
-              <Route path="/marketplace" element={
-                <ProtectedRoute>
-                  <SkillMarketplace />
-                </ProtectedRoute>
-              }
-              />
-              <Route path="/profile/:userId" element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-              />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute>
+                    <ChatPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/marketplace" element={
+                  <ProtectedRoute>
+                    <SkillMarketplace />
+                  </ProtectedRoute>
+                }
+                />
+                <Route path="/profile/:userId" element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+                />
 
-              <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/admin/login" element={<AdminLoginPage />} />
 
-              <Route path="/admin/*" element={
-                <ProtectedRoute isAdminOnly={true}>
-                  <Routes>
-                    <Route index element={<AdminDashboardPage />} />
-                    <Route path="users" element={<AdminUserManagement />} />
-                    <Route path="skills" element={<AdminSkillManagement />} />
-                    <Route path="exchanges" element={<AdminExchangeModeration />} />
-                    <Route path="analytics" element={<AdminAnalyticsPage />} />
-                  </Routes>
-                </ProtectedRoute>
-              }
-              />
+                <Route path="/admin/*" element={
+                  <ProtectedRoute isAdminOnly={true}>
+                    <Routes>
+                      <Route index element={<AdminDashboardPage />} />
+                      <Route path="users" element={<AdminUserManagement />} />
+                      <Route path="skills" element={<AdminSkillManagement />} />
+                      <Route path="exchanges" element={<AdminExchangeModeration />} />
+                      <Route path="analytics" element={<AdminAnalyticsPage />} />
+                    </Routes>
+                  </ProtectedRoute>
+                }
+                />
 
-              {/* Static Footer Pages */}
-              <Route path="/how-it-works" element={<HowItWorksPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/help" element={<HelpPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/contact" element={<ContactPage />} />
+                {/* Static Footer Pages */}
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/contact" element={<ContactPage />} />
 
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </main>
-          <Footer />
-          <Toaster />
-        </div>
-      </Router>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </main>
+            <Footer />
+            <Toaster />
+          </div>
+          </Router>
+      </NotificationProvider>
     </AuthProvider >
   );
 }

@@ -10,6 +10,7 @@ import exchangesRouter from './routes/exchanges';
 import notificationsRouter from './routes/notifications';
 import reviewsRouter from './routes/reviews';
 import contactRouter from './routes/contact';
+import chatRouter from './routes/chat';
 import errorHandler from './middleware/errorHandler'; // Import the error handler
 
 dotenv.config();
@@ -37,6 +38,7 @@ app.use('/api/exchanges', exchangesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/chat', chatRouter);
 
 // Basic health check route
 app.get('/', (req, res) => {
