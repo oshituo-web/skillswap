@@ -2,47 +2,82 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
-import { Loader2, ArrowRightLeft, Search } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Search, Filter, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UserReviews from '@/components/reviews/UserReviews';
+import toast from 'react-hot-toast';
 
 const SkillMarketplace = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false);
     const [mySkills, setMySkills] = useState([]);
-    const [selectedSkill, setSelectedSkill] = useState(null); // Skill to request
-    const [offeredSkillId, setOfferedSkillId] = useState(''); // My skill to offer
+    const [selectedSkill, setSelectedSkill] = useState(null);
+    const [offeredSkillId, setOfferedSkillId] = useState('');
     const [proposing, setProposing] = useState(false);
     const [proposalMessage, setProposalMessage] = useState('');
 
-    // Search state
+    // Search and filter state
     const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [levelFilter, setLevelFilter] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         if (user) {
-            fetchMarketplaceSkills();
             fetchMySkills();
         }
     }, [user]);
 
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (user) {
+                fetchMarketplaceSkills();
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm, categoryFilter, levelFilter, user]);
+
     const fetchMarketplaceSkills = async () => {
         try {
-            // Fetch skills with profile join
-            const { data, error } = await supabase
-                .from('skills')
-                .select('*, profiles(id, username, full_name)')
-                .neq('user_id', user.id)
-                .order('created_at', { ascending: false });
+            setSearching(true);
+            
+            // Use search endpoint if filters or search term are active
+            if (searchTerm || categoryFilter !== 'all' || levelFilter !== 'all') {
+                const params = new URLSearchParams({
+                    q: searchTerm,
+                    ...(categoryFilter !== 'all' && { category: categoryFilter }),
+                    ...(levelFilter !== 'all' && { level: levelFilter }),
+                });
+                
+                const response = await fetch(`/api/skills/search?${params}`);
+                const result = await response.json();
+                
+                // Filter out current user's skills
+                const filteredSkills = (result.skills || []).filter(skill => skill.user_id !== user.id);
+                setSkills(filteredSkills);
+            } else {
+                // Default fetch all skills
+                const { data, error } = await supabase
+                    .from('skills')
+                    .select('*, profiles(id, username, full_name, avatar_url)')
+                    .neq('user_id', user.id)
+                    .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            setSkills(data || []);
+                if (error) throw error;
+                setSkills(data || []);
+            }
         } catch (err) {
             console.error('Error fetching marketplace:', err);
+            toast.error('Failed to load skills');
         } finally {
             setLoading(false);
+            setSearching(false);
         }
     };
 
@@ -77,31 +112,28 @@ const SkillMarketplace = () => {
 
             if (error) throw error;
 
-            setProposalMessage('Exchange proposed successfully!');
+            toast.success('Exchange proposed successfully!');
             setTimeout(() => {
                 setSelectedSkill(null);
-                setProposalMessage('');
                 setOfferedSkillId('');
-            }, 2000);
+            }, 1000);
         } catch (err) {
             console.error('Error proposing exchange:', err);
-            setProposalMessage('Failed to propose exchange.');
+            toast.error('Failed to propose exchange');
         } finally {
             setProposing(false);
         }
     };
 
-    // Filter skills based on search term
-    const filteredSkills = skills.filter(skill =>
-        skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        skill.profiles?.username?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const clearFilters = () => {
+        setSearchTerm('');
+        setCategoryFilter('all');
+        setLevelFilter('all');
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
-            <div className="max-w-6xl mx-auto space-y-8">
+            <div className="max-w-6xl mx-auto space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Skill Marketplace</h1>
@@ -110,65 +142,151 @@ const SkillMarketplace = () => {
                     <Button variant="outline" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
                 </div>
 
-                {/* Search Bar */}
-                <Card className="border-none shadow-sm bg-white dark:bg-gray-800">
-                    <CardContent className="p-4">
+                {/* Search and Filters */}
+                <Card>
+                    <CardContent className="pt-6 space-y-4">
+                        {/* Search Bar */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <Input
                                 type="text"
-                                placeholder="Search for skills, descriptions, or users..."
+                                placeholder="Search skills, descriptions, or users..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-900 dark:text-white transition-all"
+                                className="pl-10 pr-10"
                             />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Filter Toggle */}
+                        <div className="flex items-center justify-between">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowFilters(!showFilters)}
+                            >
+                                <Filter className="w-4 h-4 mr-2" />
+                                {showFilters ? 'Hide Filters' : 'Show Filters'}
+                            </Button>
+                            
+                            {(searchTerm || categoryFilter !== 'all' || levelFilter !== 'all') && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                >
+                                    <X className="w-4 h-4 mr-2" />
+                                    Clear All
+                                </Button>
+                            )}
+                        </div>
+
+                        {/* Filters */}
+                        {showFilters && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Category
+                                    </label>
+                                    <select
+                                        value={categoryFilter}
+                                        onChange={(e) => setCategoryFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="all">All Categories</option>
+                                        <option value="technology">Technology & Programming</option>
+                                        <option value="languages">Languages</option>
+                                        <option value="arts">Arts & Crafts</option>
+                                        <option value="music">Music & Performance</option>
+                                        <option value="sports">Sports & Fitness</option>
+                                        <option value="business">Business & Finance</option>
+                                        <option value="cooking">Cooking & Culinary</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Proficiency Level
+                                    </label>
+                                    <select
+                                        value={levelFilter}
+                                        onChange={(e) => setLevelFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white"
+                                    >
+                                        <option value="all">All Levels</option>
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Results Count */}
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {searching ? (
+                                <span className="flex items-center">
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Searching...
+                                </span>
+                            ) : (
+                                <span>{skills.length} skill{skills.length !== 1 ? 's' : ''} found</span>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
 
+                {/* Skills Grid */}
                 {loading ? (
-                    <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
-                ) : filteredSkills.length === 0 ? (
-                    <Card className="p-12 text-center border-dashed border-2 border-gray-200 dark:border-gray-700 bg-transparent">
-                        <div className="flex justify-center mb-4">
-                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-full">
-                                <Search className="w-8 h-8 text-indigo-500" />
-                            </div>
-                        </div>
+                    <div className="flex justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    </div>
+                ) : skills.length === 0 ? (
+                    <Card className="p-12 text-center">
+                        <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No skills found</h3>
-                        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                            {searchTerm ? `No results matching "${searchTerm}". Try a different keyword.` : "There are no skills listed in the marketplace yet. Be the first to add one!"}
+                        <p className="text-gray-500 dark:text-gray-400">
+                            {searchTerm || categoryFilter !== 'all' || levelFilter !== 'all'
+                                ? 'Try adjusting your search or filters'
+                                : 'No skills available in the marketplace yet'}
                         </p>
-                        {!searchTerm && (
-                            <Button className="mt-6" onClick={() => navigate('/dashboard')}>
-                                Add Your Skill
-                            </Button>
-                        )}
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredSkills.map((skill) => (
-                            <Card key={skill.id} className="group hover:shadow-xl transition-all duration-300 border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+                        {skills.map((skill) => (
+                            <Card key={skill.id} className="group hover:shadow-xl transition-all duration-300 flex flex-col h-full">
                                 <div className="h-2 bg-gradient-to-r from-indigo-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
                                 <CardHeader className="pb-3">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-xl text-indigo-700 dark:text-indigo-400">{skill.name}</CardTitle>
-                                    </div>
+                                    <CardTitle className="text-xl text-indigo-700 dark:text-indigo-400">{skill.name}</CardTitle>
                                     <CardDescription className="flex items-center mt-1 justify-between">
                                         <div className="flex items-center">
-                                            <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300 mr-2">
-                                                {(skill.profiles?.full_name || skill.profiles?.username || 'U').charAt(0).toUpperCase()}
-                                            </div>
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">{skill.profiles?.full_name || skill.profiles?.username || 'Unknown User'}</span>
+                                            {skill.profiles?.avatar_url ? (
+                                                <img src={skill.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full mr-2" />
+                                            ) : (
+                                                <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold mr-2">
+                                                    {(skill.profiles?.full_name || skill.profiles?.username || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                                {skill.profiles?.full_name || skill.profiles?.username || 'Unknown User'}
+                                            </span>
                                         </div>
                                         {skill.profiles?.id && <UserReviews userId={skill.profiles.id} compact={true} />}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex-grow flex flex-col justify-between pt-0">
-                                    <p className="text-gray-600 dark:text-gray-400 mb-6 line-clamp-3 text-sm leading-relaxed">
+                                    <p className="text-gray-600 dark:text-gray-400 mb-6 line-clamp-3 text-sm">
                                         {skill.description || 'No description provided.'}
                                     </p>
-                                    <Button className="w-full bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-900 dark:hover:bg-gray-700 transition-colors" onClick={() => setSelectedSkill(skill)}>
+                                    <Button className="w-full" onClick={() => setSelectedSkill(skill)}>
                                         <ArrowRightLeft className="w-4 h-4 mr-2" /> Request Exchange
                                     </Button>
                                 </CardContent>
@@ -179,8 +297,8 @@ const SkillMarketplace = () => {
 
                 {/* Proposal Modal */}
                 {selectedSkill && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-                        <Card className="w-full max-w-md shadow-2xl border-none">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <Card className="w-full max-w-md shadow-2xl">
                             <CardHeader className="bg-indigo-600 text-white rounded-t-lg">
                                 <CardTitle>Propose Exchange</CardTitle>
                                 <CardDescription className="text-indigo-100">
@@ -189,10 +307,12 @@ const SkillMarketplace = () => {
                             </CardHeader>
                             <CardContent className="space-y-6 p-6">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Offer one of your skills:</label>
+                                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                                        Offer one of your skills:
+                                    </label>
                                     {mySkills.length > 0 ? (
                                         <select
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 transition-shadow"
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600"
                                             value={offeredSkillId}
                                             onChange={(e) => setOfferedSkillId(e.target.value)}
                                         >
@@ -202,26 +322,19 @@ const SkillMarketplace = () => {
                                             ))}
                                         </select>
                                     ) : (
-                                        <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
+                                        <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">
                                             You need to add skills to your profile first!
                                         </div>
                                     )}
                                 </div>
 
-                                {proposalMessage && (
-                                    <div className={`p-3 rounded-lg text-sm ${proposalMessage.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                        {proposalMessage}
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end space-x-3 pt-2">
+                                <div className="flex justify-end space-x-3">
                                     <Button variant="ghost" onClick={() => setSelectedSkill(null)}>Cancel</Button>
                                     <Button
                                         onClick={handleRequestExchange}
                                         disabled={!offeredSkillId || proposing}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                     >
-                                        {proposing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                        {proposing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                                         {proposing ? 'Sending...' : 'Send Proposal'}
                                     </Button>
                                 </div>

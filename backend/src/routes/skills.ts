@@ -4,6 +4,54 @@ import { supabase } from '../lib/supabaseClient';
 
 const router = express.Router();
 
+// Search skills with filters
+router.get('/search', async (req, res) => {
+    try {
+        const { q = '', category, level, limit = '50', offset = '0' } = req.query;
+
+        let query = supabase
+            .from('skills')
+            .select('*, profiles!inner(username, full_name, avatar_url)', { count: 'exact' });
+
+        // Text search on name and description
+        if (q && q.trim()) {
+            query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`);
+        }
+
+        // Filter by category if provided
+        if (category && category !== 'all') {
+            query = query.eq('category_id', category);
+        }
+
+        // Filter by proficiency level if provided
+        if (level && level !== 'all') {
+            query = query.eq('proficiency_level', level);
+        }
+
+        // Pagination
+        const limitNum = parseInt(limit as string);
+        const offsetNum = parseInt(offset as string);
+        query = query.range(offsetNum, offsetNum + limitNum - 1);
+
+        // Order by created_at descending
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+
+        res.json({
+            skills: data,
+            total: count,
+            limit: limitNum,
+            offset: offsetNum
+        });
+    } catch (error) {
+        console.error('Search error:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // Get all skills
 router.get('/', async (req, res) => {
     try {
