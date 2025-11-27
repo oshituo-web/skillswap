@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap } from 'lucide-react';
+import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap, User } from 'lucide-react';
 import Button from '../ui/Button';
 import DarkModeToggle from '../ui/DarkModeToggle';
 import NotificationBell from '../notifications/NotificationBell';
@@ -23,6 +23,7 @@ const Header = () => {
         { name: 'Home', path: '/', icon: Home, show: true },
         { name: 'Dashboard', path: '/dashboard', icon: BookOpen, show: isAuthenticated && !isAdmin },
         { name: 'Marketplace', path: '/marketplace', icon: Zap, show: isAuthenticated },
+        { name: 'Profile', path: `/profile/${user?.id}`, icon: User, show: isAuthenticated },
         { name: 'Admin Panel', path: '/admin', icon: ShieldCheck, show: isAuthenticated && isAdmin },
     ];
 
