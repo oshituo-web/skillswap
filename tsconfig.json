@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "es2016",
+        "module": "commonjs",
+        "rootDirs": [
+            ".",
+            "backend"
+        ],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./dist"
+    },
+    "include": [
+        "api/**/*",
+        "backend/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "frontend"
+    ]
+}
