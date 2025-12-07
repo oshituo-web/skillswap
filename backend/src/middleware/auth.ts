@@ -23,8 +23,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     (req as any).user = user;
     next();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Auth Middleware - Exception:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({
+      error: 'Internal Server Error in Auth Middleware',
+      details: error.message,
+      stack: error.stack
+    });
   }
 };
