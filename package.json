@@ -19,6 +19,7 @@
     "devDependencies": {
         "@types/multer": "^2.0.0",
         "@types/node": "^24.10.0",
+        "@vercel/node": "^5.5.15",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
     }
