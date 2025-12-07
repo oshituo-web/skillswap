@@ -50,11 +50,15 @@ app.get('/', (req, res) => {
 // Global error handling middleware - MUST be last
 app.use(errorHandler);
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server listening on port ${port}`);
 
-  // Keep the process alive
-  setInterval(() => {
-    // Heartbeat to keep event loop active
-  }, 10000);
-});
+    // Keep the process alive
+    setInterval(() => {
+      // Heartbeat to keep event loop active
+    }, 10000);
+  });
+}
+
+export default app;
