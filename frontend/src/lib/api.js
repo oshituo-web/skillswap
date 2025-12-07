@@ -25,7 +25,8 @@ export const api = {
             headers,
         });
         if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `API Error: ${response.statusText}`);
         }
         return response.json();
     },
@@ -38,7 +39,8 @@ export const api = {
             body: JSON.stringify(body),
         });
         if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `API Error: ${response.statusText}`);
         }
         return response.json();
     },
@@ -51,7 +53,8 @@ export const api = {
             body: JSON.stringify(body),
         });
         if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `API Error: ${response.statusText}`);
         }
         return response.json();
     },
@@ -64,7 +67,8 @@ export const api = {
             body: JSON.stringify(body),
         });
         if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `API Error: ${response.statusText}`);
         }
         return response.json();
     },
@@ -76,7 +80,8 @@ export const api = {
             headers,
         });
         if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || `API Error: ${response.statusText}`);
         }
         return response.status === 204 ? null : response.json();
     },
