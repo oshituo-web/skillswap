@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Star, User } from 'lucide-react';
 import { api } from '../../lib/api';
+import { getDisplayName } from '../../utils/userUtils';
 
 const UserReviews = ({ userId, compact = false }) => {
     const [reviews, setReviews] = useState([]);
@@ -60,12 +61,12 @@ const UserReviews = ({ userId, compact = false }) => {
             </div>
 
             <div className="space-y-3">
-                {reviews.slice(0, 3).map((review) => (
+                {reviews.map((review) => (
                     <div key={review.id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
                         <div className="flex items-center justify-between mb-1">
                             <span className="font-medium text-gray-900 dark:text-white flex items-center">
                                 <User className="w-3 h-3 mr-1" />
-                                {review.reviewer?.full_name || review.reviewer?.username || 'Anonymous'}
+                                {getDisplayName(review.reviewer)}
                             </span>
                             <div className="flex">
                                 {[...Array(5)].map((_, i) => (

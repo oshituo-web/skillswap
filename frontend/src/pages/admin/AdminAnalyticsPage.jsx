@@ -15,9 +15,9 @@ const AdminAnalyticsPage = () => {
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
-                console.log('[ANALYTICS] Fetching analytics data...');
+
                 const data = await api.get('/admin/analytics');
-                console.log('[ANALYTICS] Received data:', data);
+
                 setStats(data);
             } catch (err) {
                 console.error('[ANALYTICS] Error:', err);

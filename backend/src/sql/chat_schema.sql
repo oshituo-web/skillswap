@@ -1,3 +1,6 @@
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create conversations table
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -25,15 +28,18 @@ ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
 -- Policies for conversations
+DROP POLICY IF EXISTS "Users can view their own conversations" ON conversations;
 CREATE POLICY "Users can view their own conversations"
   ON conversations FOR SELECT
   USING (auth.uid() = participant1_id OR auth.uid() = participant2_id);
 
+DROP POLICY IF EXISTS "Users can insert conversations they are part of" ON conversations;
 CREATE POLICY "Users can insert conversations they are part of"
   ON conversations FOR INSERT
   WITH CHECK (auth.uid() = participant1_id OR auth.uid() = participant2_id);
 
 -- Policies for messages
+DROP POLICY IF EXISTS "Users can view messages in their conversations" ON messages;
 CREATE POLICY "Users can view messages in their conversations"
   ON messages FOR SELECT
   USING (
@@ -44,6 +50,7 @@ CREATE POLICY "Users can view messages in their conversations"
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert messages in their conversations" ON messages;
 CREATE POLICY "Users can insert messages in their conversations"
   ON messages FOR INSERT
   WITH CHECK (
@@ -69,6 +76,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for updating conversation timestamp
+DROP TRIGGER IF EXISTS update_conversation_timestamp_trigger ON messages;
 CREATE TRIGGER update_conversation_timestamp_trigger
 AFTER INSERT ON messages
 FOR EACH ROW

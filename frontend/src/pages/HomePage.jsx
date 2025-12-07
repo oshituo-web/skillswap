@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { BookOpen, Clock, Users, ArrowRight, Shield, Zap } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import Footer from '@/components/layout/Footer';
+
 
 const HomePage = () => {
   return (
@@ -105,7 +105,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
   );
 };

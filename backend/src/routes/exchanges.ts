@@ -16,8 +16,8 @@ router.get('/', authMiddleware, async (req, res) => {
             .from('exchanges')
             .select(`
                 *,
-                proposer:profiles!proposer_id(username, full_name),
-                receiver:profiles!receiver_id(username, full_name),
+                proposer:profiles!proposer_id(username, full_name, email),
+                receiver:profiles!receiver_id(username, full_name, email),
                 skill_offered:skills!skill_id_offered(name),
                 skill_requested:skills!skill_id_requested(name)
             `)
@@ -27,6 +27,7 @@ router.get('/', authMiddleware, async (req, res) => {
         if (error) throw error;
         res.json(data);
     } catch (error) {
+        console.error('Error fetching exchanges:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -54,7 +55,8 @@ router.post('/', authMiddleware, async (req, res) => {
         if (error) throw error;
         res.status(201).json(data);
     } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Error creating exchange:', error);
+        res.status(500).json({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) });
     }
 });
 

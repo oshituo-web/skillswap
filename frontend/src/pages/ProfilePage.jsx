@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import Button from '@/components/ui/Button';
 import { Loader2, MapPin, Calendar, Mail, ArrowLeft, MessageSquare } from 'lucide-react';
 import UserReviews from '@/components/reviews/UserReviews';
+import { getDisplayName, getAvatarUrl } from '@/utils/userUtils';
 
 const ProfilePage = () => {
     const { userId } = useParams();
@@ -97,13 +98,11 @@ const ProfilePage = () => {
                     <div className="px-8 pb-8">
                         <div className="relative flex justify-between items-end -mt-12 mb-6">
                             <div className="w-24 h-24 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-xl overflow-hidden">
-                                {profile.avatar_url ? (
-                                    <img src={profile.avatar_url} alt={profile.full_name || profile.username} className="w-full h-full object-cover rounded-xl" />
-                                ) : (
-                                    <div className="w-full h-full rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                                        {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                )}
+                                <img
+                                    src={getAvatarUrl(profile)}
+                                    alt={getDisplayName(profile)}
+                                    className="w-full h-full object-cover rounded-xl"
+                                />
                             </div>
 
                             {!isOwnProfile && (
@@ -115,8 +114,8 @@ const ProfilePage = () => {
                         </div>
 
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{profile.full_name || profile.username}</h1>
-                            <p className="text-gray-500 dark:text-gray-400 font-medium">@{profile.username}</p>
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{getDisplayName(profile)}</h1>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">@{profile.username || 'user'}</p>
 
                             <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600 dark:text-gray-300">
                                 <div className="flex items-center">

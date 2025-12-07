@@ -14,8 +14,9 @@ router.get('/search', async (req, res) => {
             .select('*, profiles!inner(username, full_name, avatar_url)', { count: 'exact' });
 
         // Text search on name and description
-        if (q && q.trim()) {
-            query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`);
+        const searchQuery = q as string;
+        if (searchQuery && searchQuery.trim()) {
+            query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
         }
 
         // Filter by category if provided

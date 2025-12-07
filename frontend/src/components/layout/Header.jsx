@@ -1,17 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap, User } from 'lucide-react';
+import { LogOut, Menu, X, Home, BookOpen, ShieldCheck, Zap, User, MessageCircle } from 'lucide-react';
 import Button from '../ui/Button';
 import DarkModeToggle from '../ui/DarkModeToggle';
 import NotificationBell from '../notifications/NotificationBell';
+import { api } from '@/lib/api';
 
 const Header = () => {
     const { isAuthenticated, signOut, user } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const location = useLocation();
     const isAdmin = user?.user_metadata?.is_admin;
+
+    // Fetch unread chat count
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            fetchUnreadChatCount();
+            // Poll every 30 seconds
+            const interval = setInterval(fetchUnreadChatCount, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [isAuthenticated, user]);
+
+    const fetchUnreadChatCount = async () => {
+        try {
+            const data = await api.get('/chat/unread');
+            setUnreadChatCount(data.count || 0);
+        } catch (error) {
+            console.error('Failed to fetch unread chat count:', error);
+        }
+    };
 
     const handleSignOut = async () => {
         await signOut();
@@ -60,6 +81,17 @@ const Header = () => {
 
                     {/* Auth & Actions */}
                     <div className="hidden md:flex items-center space-x-2">
+                        {/* Chat Icon with Unread Badge */}
+                        {isAuthenticated && (
+                            <Link to="/chat" className="relative p-2 text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors">
+                                <MessageCircle className="w-5 h-5" />
+                                {unreadChatCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                                        {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
                         <NotificationBell />
                         <DarkModeToggle />
                         {isAuthenticated ? (

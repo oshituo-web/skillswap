@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { getDisplayName, getAvatarUrl } from '@/utils/userUtils';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card';
 import { Loader2, ArrowRightLeft, Search, Filter, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import UserReviews from '@/components/reviews/UserReviews';
 import toast from 'react-hot-toast';
 
@@ -46,7 +47,7 @@ const SkillMarketplace = () => {
     const fetchMarketplaceSkills = async () => {
         try {
             setSearching(true);
-            
+
             // Use search endpoint if filters or search term are active
             if (searchTerm || categoryFilter !== 'all' || levelFilter !== 'all') {
                 const params = new URLSearchParams({
@@ -54,10 +55,10 @@ const SkillMarketplace = () => {
                     ...(categoryFilter !== 'all' && { category: categoryFilter }),
                     ...(levelFilter !== 'all' && { level: levelFilter }),
                 });
-                
+
                 const response = await fetch(`/api/skills/search?${params}`);
                 const result = await response.json();
-                
+
                 // Filter out current user's skills
                 const filteredSkills = (result.skills || []).filter(skill => skill.user_id !== user.id);
                 setSkills(filteredSkills);
@@ -65,7 +66,7 @@ const SkillMarketplace = () => {
                 // Default fetch all skills
                 const { data, error } = await supabase
                     .from('skills')
-                    .select('*, profiles(id, username, full_name, avatar_url)')
+                    .select('*, profiles(id, username, full_name, avatar_url, email)')
                     .neq('user_id', user.id)
                     .order('created_at', { ascending: false });
 
@@ -99,18 +100,29 @@ const SkillMarketplace = () => {
         if (!selectedSkill || !offeredSkillId) return;
         setProposing(true);
 
-        try {
-            const { error } = await supabase
-                .from('exchanges')
-                .insert([{
-                    proposer_id: user.id,
-                    receiver_id: selectedSkill.user_id,
-                    skill_id_requested: selectedSkill.id,
-                    skill_id_offered: offeredSkillId,
-                    status: 'pending'
-                }]);
 
-            if (error) throw error;
+        try {
+            const session = (await supabase.auth.getSession()).data.session;
+            const response = await fetch('/api/exchanges', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    skill_id_offered: offeredSkillId,
+                    skill_id_requested: selectedSkill.id,
+                    receiver_id: selectedSkill.user_id
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Exchange creation failed response:', errorData);
+                throw new Error(errorData.details || errorData.error || 'Failed to create exchange');
+            }
+
+            const data = await response.json();
 
             toast.success('Exchange proposed successfully!');
             setTimeout(() => {
@@ -118,8 +130,8 @@ const SkillMarketplace = () => {
                 setOfferedSkillId('');
             }, 1000);
         } catch (err) {
-            console.error('Error proposing exchange:', err);
-            toast.error('Failed to propose exchange');
+            console.error('Error proposing exchange (catch block):', err);
+            toast.error(`Failed to propose exchange: ${err.message}`);
         } finally {
             setProposing(false);
         }
@@ -175,7 +187,7 @@ const SkillMarketplace = () => {
                                 <Filter className="w-4 h-4 mr-2" />
                                 {showFilters ? 'Hide Filters' : 'Show Filters'}
                             </Button>
-                            
+
                             {(searchTerm || categoryFilter !== 'all' || levelFilter !== 'all') && (
                                 <Button
                                     variant="ghost"
@@ -268,16 +280,16 @@ const SkillMarketplace = () => {
                                     <CardTitle className="text-xl text-indigo-700 dark:text-indigo-400">{skill.name}</CardTitle>
                                     <CardDescription className="flex items-center mt-1 justify-between">
                                         <div className="flex items-center">
-                                            {skill.profiles?.avatar_url ? (
-                                                <img src={skill.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full mr-2" />
-                                            ) : (
-                                                <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold mr-2">
-                                                    {(skill.profiles?.full_name || skill.profiles?.username || 'U').charAt(0).toUpperCase()}
-                                                </div>
-                                            )}
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">
-                                                {skill.profiles?.full_name || skill.profiles?.username || 'Unknown User'}
-                                            </span>
+                                            <Link to={`/profile/${skill.profiles?.id}`} className="flex items-center hover:opacity-80 transition-opacity">
+                                                <img
+                                                    src={getAvatarUrl(skill.profiles)}
+                                                    alt={getDisplayName(skill.profiles)}
+                                                    className="w-6 h-6 rounded-full mr-2 object-cover"
+                                                />
+                                                <span className="font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                    {getDisplayName(skill.profiles)}
+                                                </span>
+                                            </Link>
                                         </div>
                                         {skill.profiles?.id && <UserReviews userId={skill.profiles.id} compact={true} />}
                                     </CardDescription>
@@ -302,7 +314,7 @@ const SkillMarketplace = () => {
                             <CardHeader className="bg-indigo-600 text-white rounded-t-lg">
                                 <CardTitle>Propose Exchange</CardTitle>
                                 <CardDescription className="text-indigo-100">
-                                    Requesting <strong>{selectedSkill.name}</strong> from {selectedSkill.profiles?.full_name || 'User'}
+                                    Requesting <strong>{selectedSkill.name}</strong> from {getDisplayName(selectedSkill.profiles)}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6 p-6">

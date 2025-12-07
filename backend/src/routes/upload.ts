@@ -16,6 +16,12 @@ router.post('/avatar', authMiddleware, upload.single('avatar'), async (req, res)
         const { data: { user } } = await supabase.auth.getUser(authHeader.split(' ')[1]);
         if (!user) return res.status(401).json({ error: 'User not found' });
 
+        console.log('File received:', req.file ? {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        } : 'No file');
+
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
@@ -67,7 +73,12 @@ router.post('/avatar', authMiddleware, upload.single('avatar'), async (req, res)
 
     } catch (error) {
         console.error('Error uploading avatar:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        // Enhanced error logging
+        if (error instanceof Error) {
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+        res.status(500).json({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) });
     }
 });
 

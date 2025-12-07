@@ -77,26 +77,37 @@ const ProfileEditor = () => {
         }
 
         setUploading(true);
+
         try {
             const formData = new FormData();
             formData.append('avatar', file);
 
+            const session = (await supabase.auth.getSession()).data.session;
+
+
             const response = await fetch('/api/upload/avatar', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                    'Authorization': `Bearer ${session?.access_token}`
                 },
                 body: formData
             });
 
-            if (!response.ok) throw new Error('Upload failed');
+
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Upload failed response:', errorData);
+                throw new Error(errorData.error || 'Upload failed');
+            }
 
             const data = await response.json();
+
             setProfile(prev => ({ ...prev, avatar_url: data.avatar_url }));
             toast.success('Avatar uploaded successfully!');
         } catch (error) {
             console.error('Avatar upload error:', error);
-            toast.error('Failed to upload avatar');
+            toast.error(`Failed to upload avatar: ${error.message}`);
         } finally {
             setUploading(false);
         }

@@ -35,11 +35,10 @@ router.get('/all-skills', [authMiddleware, adminMiddleware], async (req: Request
 
 router.get('/users', [authMiddleware, adminMiddleware], async (req: Request, res: Response) => {
     try {
-        console.log('Fetching users with adminSupabase...');
+
         const { data: { users }, error } = await adminSupabase.auth.admin.listUsers();
 
-        console.log('Users fetched:', users ? users.length : 0);
-        console.log('Error:', error);
+
 
         if (error) {
             throw error;
@@ -82,10 +81,10 @@ router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request,
             throw error;
         }
 
-        console.log(`[DEBUG EXCHANGES] Fetched ${exchanges?.length || 0} exchanges`);
+
 
         if (!exchanges || exchanges.length === 0) {
-            console.log('[DEBUG EXCHANGES] No exchanges found in database');
+
             return res.json([]);
         }
 
@@ -93,10 +92,7 @@ router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request,
         const { data: { users }, error: usersError } = await adminSupabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
         if (usersError) throw usersError;
 
-        console.log(`[DEBUG EXCHANGES] Fetched ${users?.length || 0} users`);
-        if (users && users.length > 0) {
-            console.log(`[DEBUG EXCHANGES] Sample User ID: ${users[0].id}, Email: ${users[0].email}`);
-        }
+
 
         // Get all skills to map IDs to skill names
         const { data: skills, error: skillsError } = await adminSupabase
@@ -105,12 +101,12 @@ router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request,
 
         if (skillsError) throw skillsError;
 
-        console.log(`[DEBUG EXCHANGES] Fetched ${skills?.length || 0} skills`);
+
 
         const userMap = new Map(users?.map(u => [u.id, u.email]) || []);
         const skillMap = new Map(skills?.map(s => [s.id, s.name]) || []);
 
-        console.log(`[DEBUG EXCHANGES] UserMap size: ${userMap.size}, SkillMap size: ${skillMap.size}`);
+
 
         // Enrich exchanges with user emails and skill names
         const enrichedExchanges = exchanges.map(exchange => {
@@ -119,10 +115,7 @@ router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request,
             const skillRequestedName = skillMap.get(exchange.skill_id_requested);
             const skillOfferedName = skillMap.get(exchange.skill_id_offered);
 
-            if (!proposerEmail) console.log(`[DEBUG EXCHANGES] Missing proposer email for ID: ${exchange.proposer_id}`);
-            if (!receiverEmail) console.log(`[DEBUG EXCHANGES] Missing receiver email for ID: ${exchange.receiver_id}`);
-            if (!skillRequestedName) console.log(`[DEBUG EXCHANGES] Missing skill requested for ID: ${exchange.skill_id_requested}`);
-            if (!skillOfferedName) console.log(`[DEBUG EXCHANGES] Missing skill offered for ID: ${exchange.skill_id_offered}`);
+
 
             return {
                 ...exchange,
@@ -133,7 +126,7 @@ router.get('/exchanges', [authMiddleware, adminMiddleware], async (req: Request,
             };
         });
 
-        console.log(`[DEBUG EXCHANGES] Returning ${enrichedExchanges.length} enriched exchanges`);
+
 
         res.json(enrichedExchanges);
     } catch (error) {
@@ -148,7 +141,7 @@ router.get('/analytics', [authMiddleware, adminMiddleware], async (req: Request,
         const { data: { users }, error: usersError } = await adminSupabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
         if (usersError) throw usersError;
 
-        console.log(`[DEBUG ANALYTICS] Fetched ${users?.length || 0} users`);
+
 
         const { count: skillsCount, error: skillsError } = await adminSupabase.from('skills').select('*', { count: 'exact', head: true });
         if (skillsError) throw skillsError;
@@ -162,7 +155,7 @@ router.get('/analytics', [authMiddleware, adminMiddleware], async (req: Request,
             exchanges: exchangesCount || 0
         };
 
-        console.log(`[DEBUG ANALYTICS] Returning:`, analyticsData);
+
 
         res.json(analyticsData);
 
@@ -200,7 +193,7 @@ router.patch('/exchanges/:id/approve', [authMiddleware, adminMiddleware], async 
     try {
         const { id } = req.params;
 
-        console.log(`[ADMIN] Approving exchange ${id}`);
+
 
         const { data, error } = await adminSupabase
             .from('exchanges')
@@ -215,7 +208,7 @@ router.patch('/exchanges/:id/approve', [authMiddleware, adminMiddleware], async 
 
         if (error) throw error;
 
-        console.log(`[ADMIN] Exchange ${id} approved successfully`);
+
         res.json({ message: 'Exchange approved successfully', exchange: data });
     } catch (error) {
         console.error('[ERROR] Approve exchange:', error);
@@ -227,7 +220,7 @@ router.patch('/exchanges/:id/reject', [authMiddleware, adminMiddleware], async (
     try {
         const { id } = req.params;
 
-        console.log(`[ADMIN] Rejecting exchange ${id}`);
+
 
         const { data, error } = await adminSupabase
             .from('exchanges')
@@ -241,7 +234,7 @@ router.patch('/exchanges/:id/reject', [authMiddleware, adminMiddleware], async (
 
         if (error) throw error;
 
-        console.log(`[ADMIN] Exchange ${id} rejected successfully`);
+
         res.json({ message: 'Exchange rejected successfully', exchange: data });
     } catch (error) {
         console.error('[ERROR] Reject exchange:', error);
@@ -253,7 +246,7 @@ router.patch('/exchanges/:id/cancel', [authMiddleware, adminMiddleware], async (
     try {
         const { id } = req.params;
 
-        console.log(`[ADMIN] Cancelling exchange ${id}`);
+
 
         const { data, error } = await adminSupabase
             .from('exchanges')
@@ -267,7 +260,7 @@ router.patch('/exchanges/:id/cancel', [authMiddleware, adminMiddleware], async (
 
         if (error) throw error;
 
-        console.log(`[ADMIN] Exchange ${id} cancelled successfully`);
+
         res.json({ message: 'Exchange cancelled successfully', exchange: data });
     } catch (error) {
         console.error('[ERROR] Cancel exchange:', error);

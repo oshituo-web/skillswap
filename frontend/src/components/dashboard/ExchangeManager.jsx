@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getDisplayName } from '@/utils/userUtils';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
@@ -96,11 +97,11 @@ const ExchangeManager = () => {
                                 <p className="text-gray-900 dark:text-white text-sm">
                                     {isIncoming ? (
                                         <>
-                                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">{ex.proposer?.full_name || 'User'}</span> wants to learn <span className="font-medium border-b border-gray-300 dark:border-gray-600">{ex.skill_requested?.name}</span>
+                                            <span className="font-semibold text-indigo-600 dark:text-indigo-400">{getDisplayName(ex.proposer)}</span> wants to learn <span className="font-medium border-b border-gray-300 dark:border-gray-600">{ex.skill_requested?.name}</span>
                                         </>
                                     ) : (
                                         <>
-                                            You want to learn <span className="font-medium border-b border-gray-300 dark:border-gray-600">{ex.skill_requested?.name}</span> from <span className="font-semibold text-indigo-600 dark:text-indigo-400">{ex.receiver?.full_name || 'User'}</span>
+                                            You want to learn <span className="font-medium border-b border-gray-300 dark:border-gray-600">{ex.skill_requested?.name}</span> from <span className="font-semibold text-indigo-600 dark:text-indigo-400">{getDisplayName(ex.receiver)}</span>
                                         </>
                                     )}
                                 </p>

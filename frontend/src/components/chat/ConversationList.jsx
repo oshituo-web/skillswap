@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { getDisplayName } from '@/utils/userUtils';
 
 const ConversationList = ({ selectedId, onSelect }) => {
     const { user } = useAuth();
@@ -30,8 +31,8 @@ const ConversationList = ({ selectedId, onSelect }) => {
 
     const filteredConversations = conversations.filter(conv => {
         const otherParticipant = conv.participant1_id === user.id ? conv.participant2 : conv.participant1;
-        return otherParticipant?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            otherParticipant?.username?.toLowerCase().includes(searchTerm.toLowerCase());
+        const name = getDisplayName(otherParticipant);
+        return name.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
     if (loading) {
@@ -70,7 +71,7 @@ const ConversationList = ({ selectedId, onSelect }) => {
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                                        {otherParticipant?.full_name || otherParticipant?.username || 'Unknown User'}
+                                        {getDisplayName(otherParticipant)}
                                     </h3>
                                     {conv.last_message_at && (
                                         <span className="text-xs text-gray-500 whitespace-nowrap ml-2">

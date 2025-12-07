@@ -23,7 +23,7 @@ const ForgotPasswordPage = () => {
                 if (error) throw error;
             } else {
                 // Mock success for UI demonstration if backend isn't ready
-                console.log("Reset password requested for:", email);
+
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
             setSuccess(true);
